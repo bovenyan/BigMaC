@@ -32,8 +32,7 @@ class p_rule {
     inline addr_5tup get_random() const;
 
     // gen rule
-    inline vector<p_rule> evolve_rule(const p_rule & pr, double offspring,
-		    		      double scale, double offset) const;
+    inline vector<p_rule> evolve_rule(double offspring, double scale, double offset) const; // Feb 4
     inline std::pair<p_rule, bool> join_rule(p_rule) const;
 
     // debug and print
@@ -140,14 +139,13 @@ inline bool p_rule::packet_hit(const addr_5tup & packet) const { // check whehte
     return true;
 }
 
-// Feb. 4
-inline vector<p_rule> p_rule::evolve_rule(const p_rule & pr, double offspring,
+inline vector<p_rule> p_rule::evolve_rule(double offspring,
 		   			  double scale, double offset) const{
     vector<p_rule> new_rules;
     int offspring_no = rand() % int(offset*2)+1;    // 1 ~ floor(offset)*2+1
 
     for (int i = 0; i < offspring_no; ++i){	
-        p_rule gen_rule = pr;
+        p_rule gen_rule = *this;
         gen_rule.hostpair[0].shrink_shift( rand() % int(scale * 2) + 1,
                                            rand() % int(offset * 2) + 1);
         gen_rule.hostpair[1].shrink_shift( rand() % int(scale * 2) + 1,

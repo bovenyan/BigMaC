@@ -9,31 +9,34 @@
 using std::ifstream;
 using std::ofstream;
 using std::string;
+using std::vector;
 
 class rule_list
 {
 public:
-    std::vector<p_rule> list;
+    vector<p_rule> list;
+    vector<p_rule> list_switching;
+
     std::unordered_map <uint32_t, std::vector<uint32_t> > dep_map;
 
     // handler
     inline rule_list();
     inline rule_list(std::string &, bool = false);
+
+    // generation
+    inline void evolve_gen(int offspring = 2, double scale = 2, double offset = 1);
     
     // analyzing
-    inline int linear_search(const addr_5tup &);
-    
     inline void obtain_dep();
-    inline void rule_dep_analysis();
     
     // debug
     inline void print(const std::string &);
 };
 
 
-rule_list::rule_list() {}
+inline rule_list::rule_list() {}
 
-rule_list::rule_list(string & filename, bool test_bed) {
+inline rule_list::rule_list(string & filename, bool test_bed) {
     ifstream file;
     file.open(filename.c_str());
     string sLine = "";
@@ -57,9 +60,18 @@ rule_list::rule_list(string & filename, bool test_bed) {
     }
 }
 
-/* member func
- */
-void rule_list::obtain_dep() { // obtain the dependency map
+inline void rule_list::evolve_gen(int offspring, double scale, double offset){
+    // evolving 
+    for (auto iter = list.begin(); iter != list.end(); ++iter){
+        auto res = (*iter).evolve_rule(offspring, scale, offset);
+        list_switching.insert(list_switching.end(), res.begin(), res.end());
+    }
+
+    // remove overlap
+    
+}
+
+inline void rule_list::obtain_dep() { // obtain the dependency map
     for(uint32_t idx = 0; idx < list.size(); ++idx) {
         vector <uint32_t> dep_rules;
         for (uint32_t idx1 = 0; idx1 < idx; ++idx1) {
@@ -71,18 +83,10 @@ void rule_list::obtain_dep() { // obtain the dependency map
     }
 }
 
-int rule_list::linear_search(const addr_5tup & packet) {
-    for (size_t i = 0; i < list.size(); ++i) {
-        if (list[i].packet_hit(packet))
-            return i;
-    }
-    return -1;
-}
-
 /*
  * debug and print
  */
-void rule_list::print(const string & filename) {
+inline void rule_list::print(const string & filename) {
     ofstream file;
     file.open(filename.c_str());
     for (vector<p_rule>::iterator iter = list.begin(); iter != list.end(); iter++) {
@@ -90,23 +94,6 @@ void rule_list::print(const string & filename) {
     }
     file.close();
 }
-
-void rule_list::rule_dep_analysis() {
-    ofstream ff("rule rec");
-    for (uint32_t idx = 0; idx < list.size(); ++idx) {
-        ff<<"rule : "<< list[idx].get_str() << endl;
-        for ( uint32_t idx1 = 0; idx1 < idx; ++idx1) {
-            auto result = list[idx].join_rule(list[idx1]);
-            if (result.second)
-                ff << result.first.get_str()<<endl;
-
-        }
-        ff<<endl;
-    }
-}
-
-
-
 
 
 #endif
