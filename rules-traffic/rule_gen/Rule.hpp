@@ -140,18 +140,25 @@ inline bool p_rule::packet_hit(const addr_5tup & packet) const { // check whehte
     return true;
 }
 
+// Feb. 4
 inline vector<p_rule> p_rule::evolve_rule(const p_rule & pr, double offspring,
 		   			  double scale, double offset) const{
     vector<p_rule> new_rules;
     int offspring_no = rand() % int(offset*2)+1;    // 1 ~ floor(offset)*2+1
 
     for (int i = 0; i < offspring_no; ++i){	
-        pref_addr orig = pr.hostpair[0];
-        // scale
-        for (int i = 0; i < rand() % int(scale*2)){
-            orig.mask = orig.mask | (orig.mask >> 1); 
-        }
+        p_rule gen_rule = pr;
+        gen_rule.hostpair[0].shrink_shift( rand() % int(scale * 2) + 1,
+                                           rand() % int(offset * 2) + 1);
+        gen_rule.hostpair[1].shrink_shift( rand() % int(scale * 2) + 1,
+                                           rand() % int(offset * 2) + 1);
+        gen_rule.portpair[0].shrink_shift( rand() % int(scale * 2) + 1,
+                                           (rand() % 2 * 2 -1) * (rand() % int(offset) + 1));
+        gen_rule.portpair[1].shrink_shift( rand() % int(scale * 2) + 1,
+                                           (rand() % 2 * 2 -1) * (rand() % int(offset) + 1));
+        new_rules.push_back(gen_rule);
     }
+    return new_rules;
 }
 
 inline pair<p_rule, bool> p_rule::join_rule(p_rule pr) const { // use this rule to join another

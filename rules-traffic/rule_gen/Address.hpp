@@ -134,6 +134,7 @@ class pref_addr {
     inline bool truncate(pref_addr &) const;
     inline bool truncate(range_addr &) const;
 
+    inline void shrink_shift(int bit, int shift_times); // Feb. 4
     inline void mutate(uint32_t, uint32_t, bool);
 
     inline void print() const;
@@ -156,9 +157,11 @@ class range_addr {
     inline bool operator==(const range_addr &) const;
     inline friend uint32_t hash_value(range_addr const & ra);
 
-    inline bool overlap (const range_addr &) const;
     inline range_addr intersect(const range_addr &) const;
     inline bool truncate(range_addr &) const;
+    inline void shrink_shift(int times, int off_times); // Feb. 4
+
+    inline bool overlap (const range_addr &) const;
     inline bool match (const pref_addr &) const;
     inline bool hit (const uint32_t &) const;
     inline void getTighter(const uint32_t &, const range_addr &);  // Mar 14
@@ -425,6 +428,12 @@ inline bool pref_addr::truncate(range_addr & rule) const {
     return true;
 }
 
+inline void pref_addr::shrink_shift(int bit, int shift_times){
+    for (int i = 0; i < bit; ++i)
+        mask |= (mask >> 1);
+    pref = (pref & mask) + (~mask + 1) * shift_times;
+}
+
 inline void pref_addr::mutate(uint32_t s_shrink, uint32_t s_expand, bool port) {
     if (rand()%2 > 0) { // expand
 	if (s_expand == 0)
@@ -544,9 +553,6 @@ inline uint32_t hash_value(range_addr const & ra) {
 
 /* member function
  */
-inline bool range_addr::overlap(const range_addr & ad) const { // whether two range_addr overlap  sym
-    return (!(range[1] < ad.range[0]) || (range[0] > ad.range[1]));
-}
 
 inline range_addr range_addr::intersect(const range_addr & ra) const { // return the join of two range addr  sym
     uint32_t lhs = range[0] > ra.range[0] ? range[0] : ra.range[0];
@@ -562,6 +568,20 @@ inline bool range_addr::truncate(range_addr & ra) const { // truncate a rule usi
     if (ra.range[1] > range[1])
         ra.range[1] = range[1];
     return true;
+}
+
+inline void range_addr::shrink_shift(int times, int off_times){
+    uint32_t offset = (range[0] + range[1])/2;
+    uint32_t len = (range[1] - range[0] + 1) / times;
+    range[0] = offset - len/2;
+    range[1] = offset + len/2;
+    offset = off_times * len;
+    range[0] += offset;
+    range[1] += offset;
+}
+
+inline bool range_addr::overlap(const range_addr & ad) const { // whether two range_addr overlap  sym
+    return (!(range[1] < ad.range[0]) || (range[0] > ad.range[1]));
 }
 
 inline bool range_addr::match(const pref_addr & ad) const { // whether a range matchs a prefix  sym
