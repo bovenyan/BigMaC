@@ -1,0 +1,22 @@
+/*
+ *  Author: Nanxi Kang (nkang@cs.princeton.edu)
+ *  Institute: Princeton University
+ *  Last updated on Feb.17th, 2014
+ *
+ *  All rights reserved.
+ */
+
+1. Convert ACL (Cisco\)
+   Command:
+      java CiscoDrive $acl $result $literal_port.csv
+   Example (director = ./Cisco):
+     java CiscoDrive acl.txt output.txt literal_port.csv
+
+2. Convert ClassBench (transform_cb.cpp)
+   Translate pattern and randomly generate actions
+   Command:
+      transform_cb $classbench_file $result $num_actions
+   Example: 
+      transform_cb acl1_10k acl1_10k.txt 2
+
+3. Example files can be found in folder examples/

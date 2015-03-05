@@ -1,0 +1,7 @@
+2
+path 0 
+0
+Time cost: 0.029712 sec
+path 1 
+1
+Time cost: 0.091303 sec
