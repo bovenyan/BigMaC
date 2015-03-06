@@ -30,6 +30,7 @@ class p_rule {
     // generate header
     inline addr_5tup get_corner() const;
     inline addr_5tup get_random() const;
+    inline vector<addr_5tup> get_all_corner() const;
 
     // gen rule
     inline vector<p_rule> evolve_rule(double offspring, double scale, double offset) const; // Feb 4
@@ -189,6 +190,40 @@ inline addr_5tup p_rule::get_random() const { // generate a random header from a
     header.addrs[3] = portpair[1].get_random();
     header.proto = true;
     return header;
+}
+
+inline vector<addr_5tup> p_rule::get_all_corner() const{
+    vector<addr_5tup> res;
+    res.push_back(addr_5tup());
+    vector<addr_5tup> res_new;
+
+    for (int i = 0; i < 2; ++i){
+        for (auto iter = res.begin(); iter < res.end(); ++iter){
+            (*iter).addrs[i] = hostpair[i].get_extreme(0);
+            res_new.push_back(*iter);
+            if (hostpair[i].mask != ~0){
+                (*iter).addrs[i] = hostpair[i].get_extreme(1);
+                res_new.push_back(*iter);
+            }
+        }
+        res = res_new;
+        res_new.clear();
+    }
+
+    for (int i = 0; i < 2; ++i){
+        for (auto iter = res.begin(); iter < res.end(); ++iter){
+            (*iter).addrs[i+2] = portpair[i].get_extreme(0);
+            res_new.push_back(*iter);
+            if (portpair[i].range[0] != portpair[i].range[1]){
+                (*iter).addrs[i+2] = portpair[i].get_extreme(1);
+                res_new.push_back(*iter);
+            }
+        }
+        res = res_new;
+        res_new.clear();
+    }
+    
+    return res;
 }
 
 inline void p_rule::print() const {

@@ -2,9 +2,7 @@
 #define TRACEGEN_H
 
 #include "stdafx.h"
-#include "Address.hpp"
-#include "Rule.hpp"
-#include "RuleList.h"
+#include "RuleList.hpp"
 #include <boost/unordered_map.hpp>
 #include <boost/unordered_set.hpp>
 #include <boost/iostreams/filtering_stream.hpp>
@@ -37,7 +35,6 @@ namespace io = boost::iostreams;
  * Usage:
  *   tracer tGen(rulelist pointer);
  *   tGen.setpara(parameter file);
- *   tGen.hotspot(reference file)
  *   pFlow_pruning_gen (objective synthetic trace directory)
  */
 
@@ -45,10 +42,7 @@ class tracer
 {
     boost::log::sources::logger tracer_log;
 public:
-    double flow_rate;
-    double cold_prob;
-    uint32_t hotspot_no;
-    double hotvtime;
+    double flow_rate; // rate of flow 
     string trace_root_dir; 	// the root directory to save all traces
 
 private:
@@ -57,22 +51,12 @@ private:
     double simuT;
     EpochT jesusBorn;
     atomic_uint total_packet;
-    uint32_t mut_scalar[2];
-    string hotspot_ref;
-    double evolving_time;
-    size_t evolving_no;
-
-    // locality traffic parameter
-    string hotcandi_str;	// hotspot candi file
-    uint32_t scope[4];		// hotspot probing scope
-    uint32_t hot_rule_thres;	// lower bound for indentify a hot rule
-    uint32_t hot_candi_no;	// number of hot candidate to generate
-
 
     // sources and gen
-    string flowInfoFile_str;    // first arr time of each flow
     string pcap_dir;		// original pcap trace direcotry
     string parsed_pcap_dir;	// directory of parsed pcap file
+    string flowInfoFile_str;    // first arr time of each flow
+    string headerFile_str;  // header generating from rules
    
     // intermediate
     vector<string> to_proc_files;
@@ -82,36 +66,17 @@ public:
     tracer();
     tracer(rule_list *);
 
-    /* parameter settings 
-     * 1. set_para (string para_file): setting the trace generation parameter using a parameter file
-     * 2. vector<fs::path> get_proc_files(string): the vector return version of trace_get_ts() 
-     * 3. print_setup (): print the current parameter setting
-     */
-    void set_para(string); 
-    void get_proc_files();
-    void print_setup() const;
+    // parameter settings 
+    void set_para(string para_file); // setting parameter 
+    void get_proc_files(); 
+    void print_setup() const; // print the setup 
 
-    /* toolkit 
-     * 1. trace_get_ts(string trace_ts_file): get the timestamp of the first packet of the traces and record as "path \t ts"
-     * 2. uint32_t count_proc(): counts the no. of processors in this machine
-     * 3. merge_files(string gen_trace_dir): merge the file with format "/ptrace-" and put them into the "gen_trace_dir"
-     * 4. hotspot_prob: probing the hotspot
-     * 5. hotspot_prob_b: probing the hotspot with a reference file. bool specify whether to mutate the hot area
-     * 6. vector<b_rule> gen_seed_hotspot(size_t prepair_no, size_t max_rule): generate seed hotspot for evolving
-     * 7. vector<b_rule> evolve_patter(const vector<b_rule> & seed): evolve the seed and generate new hotspots
-     * 8. raw_snapshot(...): this takes a snapshot (file, start_time, interval, sample_time, whether_do_rule_check) 
-     * 9.raw_hp_similarity(...): this calculates the host-pair similarity among different periods.
-     */
-    void trace_get_ts(string);
-    friend uint32_t count_proc();
-    void merge_files(string) const;
-    void hotspot_prob(string);
-    void hotspot_prob_b(bool = false);
-    vector<b_rule> gen_seed_hotspot(size_t, size_t);
-    vector<b_rule> evolve_pattern(const vector<b_rule> &);
-    void raw_snapshot(string, double, double);
-    void pcap_snapshot(size_t, double, pref_addr = pref_addr(), pref_addr = pref_addr());
-    void raw_hp_similarity(string, double, double, double, size_t = 10);
+    // tool kits
+    void trace_get_ts(string trace_ts_file); // Get the initial time for each parsed trace
+    friend uint32_t count_proc(); // count the no. of processors to determine threads
+    void merge_files(string) const; // merge_file with for format "/ptrace-" to "gen_trace_dir"
+    // void raw_snapshot(string, double, double);
+    // void pcap_snapshot(size_t, double, pref_addr = pref_addr(), pref_addr = pref_addr());
 
     /* trace generation and evaluation
      * 1. pFlow_pruning_gen(string trace_root_dir): generate traces to the root directory with "Trace_Generate" sub-dir
@@ -124,17 +89,18 @@ public:
      * 8. packet_count_mp(...): count the packet of each flow...  // deprecated
      * 9. p_count_st(...): single thread method for packet_count... // deprecated
      */
-    void pFlow_pruning_gen(bool);
-    void flow_pruneGen_mp(unordered_set<addr_5tup> &) const;
-    void flow_pruneGen_mp_ev(unordered_set<addr_5tup> &) const;
+    void pFlow_pruning_gen(); // wrapping function for flow generation
+    void flow_pruneGen_mp(unordered_set<addr_5tup> & flowInfo, const vector<addr_5tup> & headers) const;
     void f_pg_st (string, uint32_t, boost::unordered_map<addr_5tup, std::pair<uint32_t, addr_5tup> > *) const;
-    boost::unordered_set<addr_5tup> flow_arr_mp() const;
+    
+    boost::unordered_set<addr_5tup> flow_arr_mp() const; // getting arrival time for each flow
     boost::unordered_set<addr_5tup> f_arr_st (string) const;
+    
     void parse_pcap_file_mp(size_t, size_t) const;
     void p_pf_st(vector<string>, size_t) const;
     
-    void packet_count_mp(string, string);
-    void p_count_st(fs::path, atomic_uint*, mutex *, boost::unordered_map<addr_5tup, uint32_t>*, atomic_bool *);
+    //void packet_count_mp(string, string);
+    //void p_count_st(fs::path, atomic_uint*, mutex *, boost::unordered_map<addr_5tup, uint32_t>*, atomic_bool *);
 };
 
 
