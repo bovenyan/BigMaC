@@ -1,3 +1,0 @@
-access-list inbound permit tcp 10.10.10.10 10.10.10.11 eq ssh
-access-list inbound permit tcp 134.207.0.0/19 134.207.12.1 range 5000 5004
-

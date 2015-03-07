@@ -1,5 +1,0 @@
-2
-path 1 
-1
-Time cost: 0.085742 sec
-Time cost: 0.088142 sec
