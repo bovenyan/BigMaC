@@ -11,6 +11,7 @@
 #include <iomanip>
 #include <utility>
 #include <vector>
+#include <queue>
 
 //file system
 #include <fstream>
@@ -28,6 +29,5 @@
 #include <boost/log/utility/setup/common_attributes.hpp>
 #include <boost/log/sources/logger.hpp>
 #include <boost/log/sources/record_ostream.hpp>
-
 #endif
 

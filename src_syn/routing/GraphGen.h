@@ -1,5 +1,10 @@
-#include "stdafx.hpp"
+#ifndef ROUTING
+#define ROUTING
+
+#include "../stdafx.h"
 #include <boost/graph/dijkstra_shortest_paths.hpp>
+#include<boost/graph/adjacency_list.hpp>
+#include<boost/algorithm/string.hpp>
 
 using namespace boost;
 using std::vector; using std::pair;
@@ -15,20 +20,20 @@ class InternetGraph{
 
     public:
     vector<vector<int> > path_map; // src [ parent(dst1), parent(dst2), ...] 
-	vector<int> edge_ID;
+	vector<int> edge_ID; // map  edgeID -> graphID
 	Graph_T Graph;
+    int vertice_no;
 	
     public:
     InternetGraph();
 
     void CalShortestPath(string sp_file);
-	void ReadGraph(const char file_name [], int vertice_no = 100, int edge_node_no = 50);
-	
-    vector<int> query_path(int src, int dst, bool debug = false);
-
+	void ReadGraph(const char file_name [], int edge_node_no = 50);
     void ReadPath(string sp_file);
+	
+    vector<int> query_path(int src_eID, int dst_eID);
+    string print_path(int src, int dst);
 
-	~InternetGraph();
 };
 
 class FatTreeGraph{
@@ -36,10 +41,14 @@ class FatTreeGraph{
     const int kVal;
     const int kVal_2;
     const int kVal_hf;
+
+    FatTreeGraph(){};
     FatTreeGraph(int k);
 
     inline vector<int> query_path(const int & src, const int & dst, 
                                   const int & a_idx, const int & c_idx);
-
+    inline vector<vector<int> > query_all_path(const int & src, const int & dst, int kpath);
     ~FatTreeGraph();
 };
+
+#endif

@@ -137,7 +137,25 @@ inline bool p_rule::packet_hit(const addr_5tup & packet) const { // check whehte
 inline vector<p_rule> p_rule::evolve_rule(double offspring,
 		   			  double scale, double offset) const{
     vector<p_rule> new_rules;
-    int offspring_no = rand() % int(offset*2)+1;    // 1 ~ floor(offset)*2+1
+    if (offspring < 1)
+        offspring = 1;
+
+    int offspring_no = rand() % int(offspring*2)+1;    // 1 ~ floor(offset)*2+1
+    
+    if (scale == 0){ // only shifting
+        for (int i = 0; i < offspring_no; ++i){	
+            p_rule gen_rule = *this;
+            gen_rule.hostpair[0].shrink_shift( 0, rand() % int(offset * 2) + 1);
+            gen_rule.hostpair[1].shrink_shift( 0, rand() % int(offset * 2) + 1);
+            gen_rule.portpair[0].shrink_shift( 0, (rand() % 2 * 2 -1) * (rand() % int(offset) + 1));
+            gen_rule.portpair[1].shrink_shift( 0, (rand() % 2 * 2 -1) * (rand() % int(offset) + 1));
+            new_rules.push_back(gen_rule); 
+        }
+        return new_rules;
+    }
+
+    if (offset == 0) // scaling without shifting is non-sense;
+        offset = scale;
 
     for (int i = 0; i < offspring_no; ++i){	
         p_rule gen_rule = *this;
@@ -152,6 +170,7 @@ inline vector<p_rule> p_rule::evolve_rule(double offspring,
         new_rules.push_back(gen_rule);
     }
     return new_rules;
+
 }
 
 inline pair<p_rule, bool> p_rule::join_rule(p_rule pr) const { // use this rule to join another

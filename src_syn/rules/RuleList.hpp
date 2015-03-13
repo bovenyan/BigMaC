@@ -22,15 +22,16 @@ public:
     vector<vector<int> > ns_dep_map;
 
     // handler
-    rule_list();
-    rule_list(std::string &);
-    rule_list(std::string &, std::string &);
+    inline rule_list();
+    inline rule_list(const char []);
+    inline rule_list(const char [], const char []);
 
     // generation
-    void evolve_gen(string file_name, int offspring = 2, double scale = 2, double offset = 1);
+    inline void evolve_gen(const char file_name [], int offspring = 2, double scale = 2, double offset = 1);
     vector<addr_5tup> header_prep();
 
     // serach related
+    int search_match_sRule(addr_5tup packet);
     pair<int,int> search_match_rules(addr_5tup packet);
     vector<int> dep_ns_rule(p_rule nsRule);
     vector<int> assoc_ns_rule(p_rule sRule);
@@ -44,11 +45,11 @@ public:
 };
 
 
-rule_list::rule_list() {}
+inline rule_list::rule_list() {}
 
-rule_list::rule_list(string & filename) {
+inline rule_list::rule_list(const char filename []) {
     ifstream file;
-    file.open(filename.c_str());
+    file.open(filename);
     string sLine = "";
     getline(file, sLine);
     while (!file.eof()) {
@@ -59,8 +60,8 @@ rule_list::rule_list(string & filename) {
     file.close();
 }
 
-rule_list::rule_list(string & sRule_file, string & nsRule_file){
-    ifstream file(sRule_file.c_str());
+inline rule_list::rule_list(const char sRule_file [], const char nsRule_file []){
+    ifstream file(sRule_file);
 
     for (string line; getline(file, line);){
         p_rule sRule(line);
@@ -69,7 +70,7 @@ rule_list::rule_list(string & sRule_file, string & nsRule_file){
 
     file.close();
 
-    file.open(nsRule_file.c_str());
+    file.open(nsRule_file);
 
     for (string line; getline(file, line);){
         p_rule nsRule(line);
@@ -79,7 +80,7 @@ rule_list::rule_list(string & sRule_file, string & nsRule_file){
     file.close();
 }
 
-void rule_list::evolve_gen(string file_name, int offspring, double scale, double offset){ 
+inline void rule_list::evolve_gen(const char file_name [], int offspring, double scale, double offset){ 
     // evolving 
     for (auto iter = list.begin(); iter != list.end(); ++iter){
         auto res = (*iter).evolve_rule(offspring, scale, offset);
@@ -87,10 +88,10 @@ void rule_list::evolve_gen(string file_name, int offspring, double scale, double
     }
 
     // remove overlap
-    for (auto iter_r = list.end() - 1; iter_r != list.begin() + 1; --iter_r){
-        for (auto iter = list.begin(); iter != iter_r; ++iter){
+    for (auto iter_r = list_switching.end() - 1; iter_r != list_switching.begin() + 1; --iter_r){
+        for (auto iter = list_switching.begin(); iter != iter_r; ++iter){
             if ((*iter).dep_rule(*iter_r)){
-                iter_r = list.erase(iter_r);
+                iter_r = list_switching.erase(iter_r);
                 break;
             }
         }
@@ -104,7 +105,7 @@ void rule_list::evolve_gen(string file_name, int offspring, double scale, double
     file.close();
 }
 
-vector<addr_5tup> rule_list::header_prep(){
+inline vector<addr_5tup> rule_list::header_prep(){
     vector<addr_5tup> headers;
 
     for (auto iter = list_switching.begin(); iter != list_switching.end(); ++iter){
@@ -115,8 +116,16 @@ vector<addr_5tup> rule_list::header_prep(){
     return headers;
 }
 
+inline int rule_list::search_match_sRule(addr_5tup packet){
+    for(int i = 0; i < list_switching.size(); ++i)
+        if (list_switching[i].packet_hit(packet))
+            return i;
 
-pair<int, int> rule_list::search_match_rules(addr_5tup packet){
+    cout<<"error RuleList.hpp : packet not matched"<<endl;
+    return -1;
+}
+
+inline pair<int, int> rule_list::search_match_rules(addr_5tup packet){
     pair<int, int> res;
 
     for(int i = 0; i < list_switching.size(); ++i){
@@ -136,7 +145,7 @@ pair<int, int> rule_list::search_match_rules(addr_5tup packet){
     return res;
 }
 
-vector<int> rule_list::dep_ns_rule(p_rule nsRule){
+inline vector<int> rule_list::dep_ns_rule(p_rule nsRule){
     vector<int> res;
 
     for (int i = 0; i < list.size(); ++i){
@@ -147,7 +156,7 @@ vector<int> rule_list::dep_ns_rule(p_rule nsRule){
     return res;
 }
 
-vector<int> rule_list::assoc_ns_rule(p_rule sRule){
+inline vector<int> rule_list::assoc_ns_rule(p_rule sRule){
     vector<int> res;
 
     for (int i = 0; i < list.size(); ++i){
@@ -160,13 +169,13 @@ vector<int> rule_list::assoc_ns_rule(p_rule sRule){
 }
 
 
-void rule_list::obtain_ns_dep() { // obtain the dependency map
+inline void rule_list::obtain_ns_dep() { // obtain the dependency map
     for (int i = 0; i < list.size(); ++i){
         ns_dep_map.push_back(dep_ns_rule(list[i]));
     }
 }
 
-void rule_list::obtain_ns_assoc() {
+inline void rule_list::obtain_ns_assoc() {
     for (int i = 0; i < list_switching.size(); ++i){
         assoc_map.push_back(assoc_ns_rule(list_switching[i]));
     }
@@ -175,7 +184,7 @@ void rule_list::obtain_ns_assoc() {
 /*
  * debug and print
  */
-void rule_list::print(const string & filename) {
+inline void rule_list::print(const string & filename) {
     ofstream file;
     file.open(filename.c_str());
     for (vector<p_rule>::iterator iter = list.begin(); iter != list.end(); iter++) {

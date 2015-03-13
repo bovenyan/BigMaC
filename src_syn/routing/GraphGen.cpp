@@ -45,7 +45,6 @@ void InternetGraph::CalShortestPath(string sp_file){
         }
         shortest_path_rec<<endl;
     }
-    
 }
 
 void InternetGraph::ReadPath(string sp_file){
@@ -67,45 +66,67 @@ void InternetGraph::ReadPath(string sp_file){
 
         path_map.push_back(rec);
     }
+
+    vertice_no = path_map[0].size();
 }
 
-vector<int> InternetGraph::query_path(int src, int dst, bool debug){
+vector<int> InternetGraph::query_path(int src_eID, int dst_eID){
 	vector<int> path;
-	
+    int src = edge_ID[src_eID];
+    int dst = edge_ID[dst_eID];
+
 	while (dst != src){
 		path.push_back(dst);
-		dst = path_map[src][dst];
+		dst = path_map[src_eID][dst];
 	}
+
 	path.push_back(src);
 
-	// print path
-	if (debug){
-		for (auto iter = path.begin(); iter != path.end(); ++iter)
-			cout<<*iter<<" ";
-		cout<<endl;
-	}
+    return path;
+}
 
-	return path;
+string InternetGraph::print_path(int src, int dst){
+    vector<int> path = query_path(src, dst);
+    stringstream str;
+	// print path
+	for (auto iter = path.begin(); iter != path.end(); ++iter)
+		str<<*iter<<"->";
+    
+    return str.str();
 }
 
 
 bool pair_comp(pair<int, int> lhs, pair<int, int> rhs){
-	return lhs.second > rhs.second;	
+	return lhs.second < rhs.second;	
 }
 
-void InternetGraph::ReadGraph(const char file_name [], int vertice_no, int edge_node_no){
+void InternetGraph::ReadGraph(const char file_name [], int edge_node_no){
 	ifstream file (file_name);
-	char line[50];
-	int counter = 0;
 
-	Graph = Graph_T(vertice_no); // graph has size 100
 	vector<pair<int,int> > dist_rec;
+	
+    int counter = 0;
+    int geo_size = 100;
+    vertice_no = 100;
 
-	while (file.getline(line, 50)){
-		if (counter < 4 || counter == vertice_no + 4 || counter == vertice_no + 5){ // dummy info.
-			++counter;
+	for (string line; getline(file, line); ++counter){
+        // retrieve info from 2nd line
+        if (counter == 1){
+            vector<string> tmp; 
+            split(tmp, line, is_any_of(" "));
+
+            // obtain node_no
+            vertice_no = atoi(tmp[0].c_str());
+	        Graph = Graph_T(vertice_no);
+            edge_node_no = min(edge_node_no, vertice_no);
+
+            // obtain geo_size
+            geo_size = atoi(tmp[tmp.size()-1].c_str());
+        }
+
+        // dummy info.
+		if (counter < 4 || counter == vertice_no + 4 || counter == vertice_no + 5) 
 			continue;
-		}
 
 		// split
 		vector<string> strs;
@@ -119,12 +140,15 @@ void InternetGraph::ReadGraph(const char file_name [], int vertice_no, int edge_
 		
 		// select edge node   &   add edge
 		if (counter < vertice_no + 4){ // vertices
-			int margin = info[0]*info[0] + info[1]*info[1];
-			int tmp = (100-info[0])*(100-info[0]) + info[1]*info[1];
+			int margin = info[2]*info[2] + info[3]*info[3];
+			int tmp = (geo_size-info[2])*(geo_size-info[2]) + info[3]*info[3];
 			margin = min(margin, tmp);
-			tmp = (100-info[1])*(100-info[1]) + info[0]*info[0];
-			margin = min(margin, tmp);
-			tmp = (100-info[1])*(100-info[1]) + (100-info[0])*(100-info[0]);
+			
+            tmp = (geo_size-info[2])*(geo_size-info[2]) + info[3]*info[3];
+            margin = min(margin, tmp);
+
+			tmp = (geo_size-info[3])*(geo_size-info[3]) + 
+                  (geo_size-info[2])*(geo_size-info[2]);
 			margin = min(margin, tmp);
 			
 			pair<int, int> rec = make_pair(counter-4, margin);
@@ -135,20 +159,15 @@ void InternetGraph::ReadGraph(const char file_name [], int vertice_no, int edge_
 			add_edge(info[0], info[1], weight, Graph);
 		}
 
-		++counter;
 	}
 	
 	// obtain edge
 	sort(dist_rec.begin(), dist_rec.end(), pair_comp);
 
-	for (int i = 0; i < edge_node_no; ++i){
+	for (int i = 0; i < edge_node_no; ++i)
 		edge_ID.push_back(dist_rec[i].first);
-	}
 
 	sort(edge_ID.begin(), edge_ID.end());
-
-	// debug
-	cout << "Internet Graph Loaded" << endl;
 }
 
 // ------------------------- FatTreeGraph ----------------------------
@@ -178,3 +197,51 @@ inline vector<int> FatTreeGraph::query_path(const int & src, const int & dst,
         return res;
     }
 }
+
+// K-ECMP
+inline vector<vector<int> > FatTreeGraph::query_all_path(const int & src, const int & dst, int kpath){
+    int src_pod = src/kVal_hf;
+    int dst_pod = dst/kVal_hf;
+
+    if (kpath > kVal_hf)
+        kpath = kVal_hf;
+
+    vector<vector<int> > res;
+    
+    vector<int> random_list_1, random_list_2, random_list_3;
+    for (int i = 0; i < kVal_hf; ++i){
+        random_list_1.push_back(i);
+        random_list_2.push_back(i);
+    }
+    for (int i = 0; i < kVal_hf*kVal_hf; ++i){
+        random_list_3.push_back(i);
+    }
+
+    random_shuffle(random_list_1.begin(), random_list_1.end());
+    random_shuffle(random_list_2.begin(), random_list_2.end());
+    random_shuffle(random_list_3.begin(), random_list_3.end());
+
+    if (src_pod == dst_pod){
+        for (int i = 0; i < kpath; ++i){
+            vector<int> route;
+            route.push_back(src);
+            route.push_back(kVal_2/2 + src_pod * kVal_hf + random_list_1[i]);
+            route.push_back(dst);
+            res.push_back(route);
+        }
+    }
+    else{
+        for (int i = 0; i < kpath; ++ i){
+            vector<int> route;
+            route.push_back(src);
+            route.push_back(kVal_2/2 + src_pod * kVal_hf + random_list_1[i]);
+            route.push_back(kVal_2 + random_list_3[i]);
+            route.push_back(kVal_2/2 + dst_pod * kVal_hf + random_list_2[i]);
+            route.push_back(dst);
+            res.push_back(route);
+        }
+    }
+    return res;
+}
+
+

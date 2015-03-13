@@ -9,27 +9,32 @@ int main(int argc, char* argv[]){
         return -1;
     } 
 
-    
+    srand(time(NULL));
+
     if (!strcmp(argv[1], "-r")){
-        rule_list rList(argv[2]);
+        rule_list rList;
     
         if ( argc >= 5 && !strcmp(argv[3], "-sr"))
-            rList.evolve_gen(argv[4], 2, 3, 0);
+            rList = rule_list(argv[2], argv[4]);
         else{
+            rList = rule_list(argv[2]);
             rList.evolve_gen("../../data/srule_10k.dat", 2, 3, 0);
         }
-        
-        /*
-        synTraceGen tGen (&rList, "~/BigMaC/conf/conf_set");
-        
-        for (int i = 0; i < 10000; ++i){
+       
+        ofstream file("trace_rec.txt");
+
+        synTraceGen tGen (&rList, "~/BigMaC/config/traf_gen.conf");
+    
+        int arrival_count = 0;
+        for (int i = 0; i < 1000000; ++i){
             auto packet = tGen.fetch_next();
-            if (packet.second)
-                cout<<"flow: "<<packet.first.str_readable()<<" arrives"<<endl;
+            if (packet.second){
+                file<<"flow: "<<packet.first.str_readable()<<" arrives"<<endl;
+                ++arrival_count;
+            }
             else
-                cout<<"flow: "<<packet.first.str_readable()<<" leaves"<<endl;
-                
+                file<<"flow: "<<packet.first.str_readable()<<" leaves"<<endl;
         }
-        */
+        cout<<"arrival rate : "<<double(arrival_count)/1000<<endl;
     }
 }
