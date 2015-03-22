@@ -1,3 +1,10 @@
+/*
+ * FileName: Address.hpp
+ * Contributer: Bo Yan (NYU)
+ * Description:
+ *      Structure for prefix / range address
+ */
+
 #ifndef ADDRESS_H
 #define ADDRESS_H
 

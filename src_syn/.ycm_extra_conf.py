@@ -43,10 +43,10 @@ flags = [
 '/usr/lib',
 '-isystem',
 '/usr/include',
+'/usr/local/include',
+'/usr/local/lib',
 '-I'
 '../'
-#'-I',
-#'/usr/local/boost_1_54_0/include',
 ]
 
 # Set this to the absolute path to the folder (NOT the file!) containing the

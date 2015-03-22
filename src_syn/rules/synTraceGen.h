@@ -1,3 +1,11 @@
+/*
+ * FileName: SynTraceGen.h
+ * Contributer: Bo Yan (NYU)
+ * Description:
+ *      Synthetic Trace Generation
+ *      Trace Generated at synthetic code
+ */
+
 #ifndef SYN_TRACE_GEN_H
 #define SYN_TRACE_GEN_H
 

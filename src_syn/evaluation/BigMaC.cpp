@@ -1,11 +1,10 @@
 #include "BigMaC.h"
 
-
 bigmac::bigmac(rule_list * rL, int nNo, const vector<vector<int> > & path_map){
     sRule_path_map = path_map;
     rList = rL;
     node_no = nNo;
-
+   
     total_cost = 0;
     cache_counter = 0;
     // init flow table record

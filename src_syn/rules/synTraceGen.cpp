@@ -1,3 +1,11 @@
+/*
+ * FileName: SynTraceGen.cpp
+ * Contributer: Bo Yan (NYU)
+ * Description:
+ *      Synthetic Trace Generation
+ *      Trace Generated at synthetic code
+ */
+
 #include "synTraceGen.h"
 
 using std::make_pair;
@@ -7,7 +15,6 @@ synTraceGen::synTraceGen(){}
 synTraceGen::synTraceGen(rule_list * rL, double fRate){
     rList = rL;
     flow_rate = fRate;
-
     headers = rList->header_prep();
     on_arrival = false;
     prev_arrival = 0;
@@ -15,7 +22,6 @@ synTraceGen::synTraceGen(rule_list * rL, double fRate){
 
 synTraceGen::synTraceGen(rule_list * rL, const char trace_conf[]){
     rList = rL;
-
     ifstream file(trace_conf);
 
     for (string line; getline(file, line);){

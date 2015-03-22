@@ -38,9 +38,9 @@ class InternetGraph{
 
 class FatTreeGraph{
     public:
-    const int kVal;
-    const int kVal_2;
-    const int kVal_hf;
+    int kVal;
+    int kVal_2;
+    int kVal_hf;
 
     FatTreeGraph(){};
     FatTreeGraph(int k);

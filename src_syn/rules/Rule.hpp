@@ -1,3 +1,10 @@
+/*
+ * FileName: Rule.hpp
+ * Contributer: Bo Yan (NYU)
+ * Description:
+ *      Structure for Wildcard Rules / Flow Entries
+ */
+
 #ifndef RULE_H
 #define RULE_H
 
@@ -6,71 +13,112 @@
 
 using std::pair;
 
+class r_rule;
+class b_rule;
+
+/* p_rule: policy-rule
+ *      HostPair: prefix addr    e.g. 10.0/16
+ *      PortPair: range addr     e.g. 0-1023
+ *      Proto:   true: TCP, false: UDP
+ *      Hit: Boolean to indicate the rule being hit
+*/
 class p_rule {
-  public:
+    friend class b_rule;
+    friend class r_rule;
+
+  private:
     pref_addr hostpair[2];
     range_addr portpair[2];
     bool proto;
-
     bool hit;
 
   public:
-
     // constructor
     inline p_rule();
-    inline p_rule(const p_rule & pr);
-    inline p_rule(const std::string & rule_string);
+    inline p_rule(const p_rule & pr); // cpy
+    inline p_rule(const std::string & rule_string); // copy from string
 
     // comparator
     inline bool operator==(const p_rule & rhs) const;
-    inline bool dep_rule(const p_rule & rhs) const;
+    inline bool overlap(const p_rule & rhs) const; // two p_rules overlap
     inline bool packet_hit(const addr_5tup & packet) const;
 
     // generate header
-    inline addr_5tup get_corner() const;
-    inline addr_5tup get_random() const;
-    inline vector<addr_5tup> get_all_corner() const;
+    inline addr_5tup get_corner() const; // generate header at only corner
+    inline vector<addr_5tup> get_all_corner() const; // all corners 
+    inline addr_5tup get_random() const; // generate header inside
 
     // gen rule
-    inline vector<p_rule> evolve_rule(double offspring, double scale, double offset) const; // Feb 4
-    inline std::pair<p_rule, bool> join_rule(p_rule) const;
+    inline vector<p_rule> evolve_rule(double offspring, double scale, double offset) const; // Evolving rules by duplicate, shift, reshape (Feb 4)
+    inline std::pair<p_rule, bool> join_rule(p_rule) const; // join 
 
     // debug and print
     inline std::string get_str() const;
     inline void print() const;
 };
 
+/* r_rule: range-rule
+ *      addrs: range addr     e.g. 0-1023
+ *      Proto:   true: TCP, false: UDP
+*/
 class r_rule {
-  public:
+  private:
     range_addr addrs[4];
     bool proto;
 
   public:
+    // constructors
     inline r_rule();
     inline r_rule(const r_rule &);
     inline r_rule(const p_rule &);
 
+    // comparators 
     inline bool operator==(const r_rule &) const ;
     inline friend uint32_t hash_value(r_rule const &);
-
-    inline bool overlap(const r_rule &) const;
-    inline void prune_mic_rule(const r_rule &, const addr_5tup &); // Mar 14
-
+    inline bool overlap(const r_rule &) const; // check overlap
+    inline void prune_mic_rule(const r_rule &, const addr_5tup &); // join with tighest part 
+    
+    // debug
     inline std::string get_str() const;
 };
 
-/* ----------------------------- p_rule----------------------------------
- * brief:
- * bucket_rules: two dim are prefix address, the other two are range address
+/* b_rule: bucket-rule
+ *      addrs: prefix addr     e.g. 10.0/16
+ *      Proto:   true: TCP, false: UDP
+*/
+class b_rule {
+  protected:
+    pref_addr addrs[4];
+    bool proto;
+
+  public:
+    // constructors
+    inline b_rule();
+    inline b_rule(const b_rule &);
+    inline b_rule(const std::string &);
+
+    // comparators
+    inline bool packet_hit(const addr_5tup &) const;
+    inline bool assoc_prule(const p_rule &) const; // bucket overlaps a policy rule 
+    inline bool trunc_prule(p_rule &) const; // use bucket to trucate a p_rule
+    inline bool overlap(const b_rule &) const;
+
+    // debug
+    inline std::string get_str() const;
+    inline void print() const;
+    
+    // deprecated  Mar 20 2015
+    //inline bool match_rule(const p_rule &) const; // bucket overlaps a policy rule 
+    //inline bool match_truncate(p_rule &) const; // use bucket to trucate a p_rule 
+    //inline void mutate_pred(uint32_t, uint32_t);
+};
+
+
+
+/*
+ * Implementation
  */
 
-/* constructors
- *
- * options:
- * 	()			default
- * 	(const p_rule &)	copy function
- * 	(const string &)	generate from a string "#srcpref/mask \t dstpref/mask \t ..."
- */
 inline p_rule::p_rule():hit(false) {}
 
 inline p_rule::p_rule(const p_rule & pr) {
@@ -108,7 +156,7 @@ inline bool p_rule::operator==(const p_rule & rhs) const {
     return true;
 }
 
-inline bool p_rule::dep_rule(const p_rule & rl) const { // check whether a rule is directly dependent
+inline bool p_rule::overlap(const p_rule & rl) const { // check whether a rule is directly dependent
     if (!hostpair[0].match(rl.hostpair[0]))
         return false;
     if (!hostpair[1].match(rl.hostpair[1]))
@@ -323,5 +371,84 @@ inline string r_rule::get_str() const {
     }
     return ss.str();
 }
+
+
+inline b_rule::b_rule() { // constructor default
+    addrs[2].mask = ((~0)<<16); // port is limited to 0~65535
+    addrs[3].mask = ((~0)<<16);
+}
+
+inline b_rule::b_rule(const b_rule & br) { // copy constructor
+    for(uint32_t i=0; i<4; i++) {
+        addrs[i] = br.addrs[i];
+    }
+    proto = br.proto;
+}
+
+inline b_rule::b_rule(const string & rule_str) { // construct from string
+    vector<string> temp;
+    boost::split(temp, rule_str, boost::is_any_of("\t"));
+    for(uint32_t i=0; i<4; i++) {
+        addrs[i] = pref_addr(temp[i]);
+    }
+}
+
+/* member funcs
+ */
+inline bool b_rule::packet_hit(const addr_5tup & packet) const { // check packet hit a bucket
+    for (uint32_t i = 0; i < 4; i++) {
+        if (!addrs[i].hit(packet.addrs[i]))
+            return false;
+    }
+    // ignore proto check
+    return true;
+}
+
+inline bool b_rule::assoc_prule(const p_rule & rule) const { // check whether a policy rule is in bucket
+    if (!rule.hostpair[0].match(addrs[0]))
+        return false;
+    if (!rule.hostpair[1].match(addrs[1]))
+        return false;
+    if (!rule.portpair[0].match(addrs[2]))
+        return false;
+    if (!rule.portpair[1].match(addrs[3]))
+        return false;
+    return true;
+}
+
+inline bool b_rule::trunc_prule(p_rule & rule) const { // truncate a policy rule using a bucket
+    if (!addrs[0].truncate(rule.hostpair[0]))
+        return false;
+    if (!addrs[1].truncate(rule.hostpair[1]))
+        return false;
+    if (!addrs[2].truncate(rule.portpair[0]))
+        return false;
+    if (!addrs[3].truncate(rule.portpair[1]))
+        return false;
+    return true;
+}
+
+inline bool b_rule::overlap(const b_rule & br) const {
+    for (uint32_t i = 0; i < 4; ++i) {
+        if (!addrs[i].match(br.addrs[i]))
+            return false;
+    }
+    return true;
+}
+
+/* debug & print function
+ */
+inline void b_rule::print() const { // print func
+    cout<<get_str()<<endl;
+}
+
+inline string b_rule::get_str() const { // print func
+    stringstream ss;
+    for(uint32_t i = 0; i < 4; i++) {
+        ss<<addrs[i].get_str()<<"\t";
+    }
+    return ss.str();
+}
+
 
 #endif

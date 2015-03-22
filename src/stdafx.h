@@ -1,6 +1,7 @@
 #ifndef STDAFX_H
 #define STDAFX_H
 
+// boven bigmac
 #include <cstdlib>
 #include <ctime>
 #include <iostream>
