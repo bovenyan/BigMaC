@@ -51,7 +51,6 @@ void bucket_tree::make_tree(bucket * ptr, int level) {
     }
 }
 
-
 // ---------- bucket_tree ------------
 bucket_tree::bucket_tree() {
 }
@@ -67,52 +66,17 @@ bucket_tree::~bucket_tree() {
     delNode(root);
 }
 
-// Mar 22 job save
 pair<bucket *, int> bucket_tree::search_bucket(const addr_5tup& packet, bucket * buck) const {
     if (!buck->sonList.empty()) {
-        size_t idx = 0;
-        for (int i = 3; i >= 0; --i) {
-            if (buck->cutArr[i] != 0) {
-                idx = (idx << buck->cutArr[i]);
-                size_t offset = (packet.addrs[i] - buck->addrs[i].pref);
-                offset = offset/((~(buck->addrs[i].mask) >> buck->cutArr[i]) + 1);
-                idx += offset;
-            }
-        }
-        assert (idx < buck->sonList.size());
-        return search_bucket(packet, buck->sonList[idx]);
+        return search_bucket(packet, buck->gotoSon(packet));
     } else {
-        buck->hit = true;
-        int rule_id = -1;
-
-        for (auto iter = buck->related_rules.begin(); iter != buck->related_rules.end(); ++iter) {
-            if (rList->list[*iter].packet_hit(packet)) {
-                rList->list[*iter].hit = true;
-                rule_id = *iter;
-                break;
-            }
-        }
-        return std::make_pair(buck, rule_id);
-    }
-}
-
-bucket * bucket_tree::search_bucket_seri(const addr_5tup& packet, bucket * buck) const {
-    if (buck->sonList.size() != 0) {
-        for (auto iter = buck->sonList.begin(); iter != buck->sonList.end(); ++iter)
-            if ((*iter)->packet_hit(packet))
-                return search_bucket_seri(packet, *iter);
-        return NULL;
-    } else {
-        return buck;
+        return std::make_pair(buck, buck->search_rela(packet, rList));
     }
 }
 
 
 void bucket_tree::delNode(bucket * ptr) {
-    for (Iter_son iter = ptr->sonList.begin(); iter!= ptr->sonList.end(); iter++) {
-        delNode(*iter);
-    }
-    delete ptr;
+    ptr->delSubTree();
 }
 
 /*
@@ -121,17 +85,9 @@ void bucket_tree::delNode(bucket * ptr) {
 
 void bucket_tree::print_bucket(ofstream & in, bucket * bk, bool detail) { // const
     if (bk->sonList.empty()) {
-        in << bk->get_str() << endl;
-        if (detail) {
-            in << "re: ";
-            for (Iter_id iter = bk->related_rules.begin(); iter != bk->related_rules.end(); iter++) {
-                in << *iter << " ";
-            }
-            in <<endl;
-        }
-
+        in << bk->get_str(detail) << endl;
     } else {
-        for (Iter_son iter = bk->sonList.begin(); iter != bk->sonList.end(); iter++)
+        for (auto iter = bk->sonList.begin(); iter != bk->sonList.end(); iter++)
             print_bucket(in, *iter, detail);
     }
     return;

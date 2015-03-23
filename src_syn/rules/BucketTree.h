@@ -29,9 +29,8 @@ class bucket_tree {
     // build tree
     void make_tree(bucket * ptr, int level);
 
-    // search 
-    std::pair<bucket *, int> search_bucket(const addr_5tup &, bucket* ) const;
-    bucket * search_bucket_seri(const addr_5tup &, bucket* ) const;
+    // search   
+    std::pair<bucket *, int> search_bucket(const addr_5tup & packet, bucket* buck) const; // returns the bucket and match switching rule
 
     // debug
     void print_bucket(std::ofstream &, bucket *, bool); // const

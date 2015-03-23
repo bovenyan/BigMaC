@@ -35,7 +35,8 @@ class bucket: public b_rule {
     // access
     int rela_size() const;
     bool is_rela(const int &) const;
-    bucket * gotoSon(addr_5tup packet, int * ptrs);  
+    bucket * gotoSon(addr_5tup packet);  
+    int search_rela(addr_5tup packet, rule_list * rList);
 
     // node modify
     bool splittable(const vector<int> & cBits);
@@ -45,7 +46,7 @@ class bucket: public b_rule {
     void clearNonRela(rule_list * rList);
 
     // debug
-    string get_str() const;
+    string get_str(bool detail) const;
 };
 
 
@@ -72,22 +73,33 @@ bool bucket::is_rela(const int & checkID) const{
     return (related_rules.find(checkID) != related_rules.end());
 }
 
-bucket * bucket::gotoSon(addr_5tup packet, int * ptrs){
-    int idx = 0;
-    
-    for (auto iter = cutBits.begin(); iter != cutBits.end(); ++iter){
-        if (ptrs[*iter] < 0)
-            return NULL;
+bucket * bucket::gotoSon(addr_5tup packet){
+    uint32_t masks[4];
+    for (int i = 0; i < 4; ++i)
+        masks[i] = addrs[i].mask; 
 
-        if ((1<<ptrs[*iter]) > 0)
+    int idx = 0;
+    for (auto iter = cutBits.begin(); iter != cutBits.end(); ++iter){
+        uint32_t mask = masks[*iter] ^ ((1<<31)+(masks[*iter]>>1)); // 000..00100..000
+        if ((packet.addrs[*iter] & mask) != 0)
             idx = (idx<<1) + 1;
         else
             idx = (idx<<1);
-        
-        --ptrs[*iter];
-    }
 
+        masks[*iter] = (masks[*iter]>>1) + (1<<31);
+    }
+    
     return sonList[idx];
+}
+
+int bucket::search_rela(addr_5tup packet, rule_list * rList){
+    for (auto iter_rela = related_rules.begin(); iter_rela != related_rules.end();
+            ++iter_rela){
+        if (rList->sRuleAt(*iter_rela).packet_hit(packet)){
+            return *iter_rela;
+        }
+    }
+    return -1;
 }
 
 bool bucket::splittable(const vector<int> & cBits){
@@ -165,9 +177,14 @@ void bucket::clearNonRela(rule_list * rList){
     }
 }
 
-string bucket::get_str() const {
+string bucket::get_str(bool detail) const {
     stringstream ss;
     ss << b_rule::get_str() << "\t" << related_rules.size();
+    if (detail){
+        ss << "\n\t" << "related_rules: ";
+        for (auto iter = related_rules.begin(); iter != related_rules.end(); ++iter)
+            ss<<*iter<<" ";
+    }
     return ss.str();
 }
 

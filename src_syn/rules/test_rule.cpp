@@ -1,7 +1,7 @@
 #include "../stdafx.h"
 #include "RuleList.hpp"
 #include "synTraceGen.h"
-
+#include "BucketTree.h"
 
 int main(int argc, char* argv[]){
     if (argc < 3){
