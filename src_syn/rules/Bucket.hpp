@@ -13,6 +13,7 @@
 #include "RuleList.hpp"
 #include <set>
 
+using std::set;
 /* bucket: Inherited Structure from b_rule for Bucket Tree node
  *  sonList: list of son nodes
  *  related_rules: related rules to this node
@@ -20,22 +21,28 @@
  */
 class bucket: public b_rule {
   private:
-    std::vector<bucket*> sonList;   
-    std::vector<uint32_t> related_rules;
+    set<int> related_rules; // sRule overlapped with bucket
     vector<int> cutBits; // [2,2,2] cut three times at dstIP
 
   public:
+    std::vector<bucket*> sonList;   
+    
     // constructor
     bucket();
     bucket(const bucket &); // cpy
-    bucket(const rule_list *);
+    bucket(const rule_list * rL, bool all);
 
     // access
-    bucket * gotoSon(addr_5tup packet, int * ptrs); // Mar 20
+    int rela_size() const;
+    bool is_rela(const int &) const;
+    bucket * gotoSon(addr_5tup packet, int * ptrs);  
 
     // node modify
-    std::pair<double, size_t> split(vector<int> cBits, rule_list * rList);
-    void deleteSubTree(); // Mar 20
+    bool splittable(const vector<int> & cBits);
+    pair<double, int> split(const vector<int> & cBits, rule_list * rList); // !! Need to check feasibility before using;
+    void cleanSon();
+    void delSubTree(); // Mar 20
+    void clearNonRela(rule_list * rList);
 
     // debug
     string get_str() const;
@@ -43,23 +50,26 @@ class bucket: public b_rule {
 
 
 // implementation
-using std::list;
-using std::ifstream;
-using std::ofstream;
-using std::pair;
-using std::set;
 
 bucket::bucket(){}
 
 bucket::bucket(const bucket & bk) : b_rule(bk) {
     sonList = vector<bucket*>();
-    related_rules = vector<uint32_t>();
+    related_rules = bk.related_rules;
 }
 
-bucket::bucket(const rule_list * rL) {
+bucket::bucket(const rule_list * rL, bool all = false) {
     for (size_t idx = 0; idx != rL->sRule_size(); ++idx)
-        if (assoc_prule(rL->sRuleAt(idx)))
-            related_rules.push_back(idx);
+        if (all || assoc_prule(rL->sRuleAt(idx)))
+            related_rules.insert(idx);
+}
+
+int bucket::rela_size() const{
+    return related_rules.size();
+}
+
+bool bucket::is_rela(const int & checkID) const{
+    return (related_rules.find(checkID) != related_rules.end());
 }
 
 bucket * bucket::gotoSon(addr_5tup packet, int * ptrs){
@@ -70,7 +80,7 @@ bucket * bucket::gotoSon(addr_5tup packet, int * ptrs){
             return NULL;
 
         if ((1<<ptrs[*iter]) > 0)
-            idx = (idx<<1) + 1);
+            idx = (idx<<1) + 1;
         else
             idx = (idx<<1);
         
@@ -80,59 +90,80 @@ bucket * bucket::gotoSon(addr_5tup packet, int * ptrs){
     return sonList[idx];
 }
 
-pair<double, size_t> bucket::split(vector<int> cBits, rule_list *rList) {
-    
-    if (!sonList.empty()){ // clear son
-        for (auto iter = sonList.begin(); iter != sonList.end(); ++iter){
-            delte *iter;
-        }
+bool bucket::splittable(const vector<int> & cBits){
+    uint32_t masks[4];
+    for (int i = 0; i < 4; ++i)
+        masks[i] = addrs[i].mask;  
+
+    for (int bit_idx = 0; bit_idx < cBits.size() - 1; ++bit_idx){
+        if (masks[bit_idx] == (~0))
+            return false;
+        masks[bit_idx] = (masks[bit_idx]) + (1 << 31);
     }
-
-    // Mar 21 job save
-
-    uint32_t new_masks[4];
-    size_t total_son_no = 1;
-
-    for (size_t i = 0; i < 4; ++i) { // new mask
-        new_masks[i] = addrs[i].mask;
-
-        for (size_t j = 0; j < dim[i]; ++j) {
-            if (~(new_masks[i]) == 0)
-                return std::make_pair(-1, 0);
-
-            new_masks[i] = (new_masks[i] >> 1) + (1 << 31);
-            total_son_no *= 2;
-        }
-    }
-
-
-    size_t total_rule_no = 0;
-    size_t largest_rule_no = 0;
-
-    for (size_t i = 0; i < total_son_no; ++i) {
-        bucket * son_ptr = new bucket(*this);
-
-        uint32_t id = i;
-        for (size_t j = 0; j < 4; ++j) { // new pref
-            son_ptr->addrs[j].mask = new_masks[j];
-            size_t incre = (~(new_masks[j]) + 1);
-            son_ptr->addrs[j].pref += (id % (1 << dim[j]))*incre;
-            id = (id >> dim[j]);
-        }
-
-        for (Iter_id iter = related_rules.begin(); iter != related_rules.end(); ++iter) { // rela rule
-            if (son_ptr->match_rule(rList->list[*iter]))
-                son_ptr->related_rules.push_back(*iter);
-        }
-
-        total_rule_no += son_ptr->related_rules.size();
-        largest_rule_no = std::max(largest_rule_no, son_ptr->related_rules.size());
-
-        sonList.push_back(son_ptr);
-    }
-    return std::make_pair(double(total_rule_no)/total_son_no, largest_rule_no);
+    return true;
 }
 
+pair<double, int> bucket::split(const vector<int> & cBits, rule_list *rList) {
+    if (!sonList.empty()){ // clear son
+        for (auto iter = sonList.begin(); iter != sonList.end(); ++iter)
+            delete *iter;
+
+        sonList.clear();
+    }
+
+    int sonList_size = 1;
+    for (int i = 0; i < cBits.size(); ++i)
+        sonList_size *= 2;
+
+    double cost = 0;
+    int max_size = 0;
+
+    for (int son_idx = 0; son_idx < sonList_size; ++son_idx){
+        bucket * curBucket = new bucket(*this);
+        
+        // cal prefix mask for each bit: MSB -> LSB
+        for (int bit_idx = 0; bit_idx < cBits.size() - 1; ++bit_idx){
+            uint32_t & mask = curBucket->addrs[cBits[bit_idx]].mask;
+            mask = (mask >> 1) + (1 << 31);
+
+            uint32_t & pref = curBucket->addrs[cBits[bit_idx]].pref;
+            uint32_t incre = (~mask) + 1;
+
+            if ((son_idx & (1 << bit_idx)) > 0) // sonList msb/lsb reverse
+                pref+=incre;
+        }
+
+        // delete non-related rule;
+        curBucket->clearNonRela(rList);
+        sonList.push_back(curBucket);
+
+        cost += curBucket->rela_size();
+        max_size = std::max(max_size, curBucket->rela_size());
+    }
+
+    return std::make_pair(cost/sonList_size, max_size);
+}
+
+void bucket::cleanSon(){
+    for (auto iter = sonList.begin(); iter != sonList.end(); ++iter)
+        delete *iter;
+}
+
+void bucket::delSubTree(){
+    for (auto iter = sonList.begin(); iter != sonList.end(); ++iter)
+        (*iter)->delSubTree();
+    delete this;
+}
+
+void bucket::clearNonRela(rule_list * rList){
+    for (auto iter_rule_id = related_rules.begin(); 
+              iter_rule_id != related_rules.end();){
+        if (!assoc_prule(rList->sRuleAt(*iter_rule_id)))
+            iter_rule_id = related_rules.erase(iter_rule_id);
+        else
+            ++iter_rule_id;
+    }
+}
 
 string bucket::get_str() const {
     stringstream ss;
@@ -140,18 +171,4 @@ string bucket::get_str() const {
     return ss.str();
 }
 
-void bucket::clearHitFlag() {
-    hit = false;
-    for (auto iter = sonList.begin(); iter != sonList.end(); ++iter) {
-        (*iter)->clearHitFlag();
-    }
-}
-
-void bucket::cleanson() {
-    for (auto iter = sonList.begin(); iter != sonList.end(); ++iter)
-        delete (*iter);
-    sonList.clear();
-}
-
 #endif
-

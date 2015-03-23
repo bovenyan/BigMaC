@@ -1,73 +1,73 @@
 #include "BucketTree.h"
 
-typedef vector<uint32_t>::iterator Iter_id;
-typedef vector<bucket*>::iterator Iter_son;
+void bucket_tree::gen_candi_cuts(int sum){
+    if (sum == 1){ // [0] [1] [2] [3]
+        candi_cuts.clear();
+        candi_cuts.push_back(vector<int>(1,0));
+        candi_cuts.push_back(vector<int>(1,1));
+        candi_cuts.push_back(vector<int>(1,2));
+        candi_cuts.push_back(vector<int>(1,3));
+    }
+    gen_candi_cuts(sum-1);
 
+    vector<vector<int> > new_candi_cuts;
+    for(auto iter = candi_cuts.begin(); iter != candi_cuts.end(); ++iter){
+        for (int i = 0; i < 4; ++i){ // [..,0] [..,1] [..,2] [..,3]
+            vector<int> cur = *iter;
+            cur.push_back(i);
+            new_candi_cuts.push_back(cur);
+        }
+    }
+    candi_cuts = new_candi_cuts;
+}
 
-using std::set;
-using std::deque;
-using std::ifstream;
-using std::ofstream;
+void bucket_tree::make_tree(bucket * ptr, int level) {
+    if (level == 0)
+        return;
 
+    pair<double, int> opt_cost = std::make_pair(ptr->rela_size(), ptr->rela_size());
+    vector<int> opt_cut;
 
-void bucket_tree::splitNode_fix(bucket * ptr) {
-    double cost = ptr->related_rules.size();
-
-    pair<double, size_t> opt_cost = std::make_pair(ptr->related_rules.size(), ptr->related_rules.size());
-    vector<size_t> opt_cut;
-
-    
-    auto cost = ptr->split(*iter, rList);
-    
-    if (cost.first < 0)
-        continue;
-
-        if (cost.first < opt_cost.first || ((cost.first == opt_cost.first) && (cost.second < opt_cost.second))) {
-            opt_cut = *iter;
-            opt_cost = cost;
+    for (auto iter_cut = candi_cuts.begin(); iter_cut != candi_cuts.end(); ++iter_cut){
+        // test availability
+        if (ptr->splittable(*iter_cut)){
+            auto cost = ptr->split(*iter_cut, rList);
+            
+            if ((cost.first < opt_cost.first) || 
+                (cost.first == opt_cost.first && 
+                 cost.second < opt_cost.second)){
+                opt_cut = *iter_cut;
+                opt_cost = cost;
+            }
         }
     }
 
-    if (opt_cut.empty()) {
-        ptr->cleanson();
-        return;
-    } else {
+    if (opt_cut.empty())
+        ptr->cleanSon();
+    else{
         ptr->split(opt_cut, rList);
-        for (size_t i = 0; i < 4; ++i)
-            ptr->cutArr[i] = opt_cut[i];
-
         for (auto iter = ptr->sonList.begin(); iter != ptr->sonList.end(); ++iter)
-            splitNode_fix(*iter);
+            make_tree(*iter, level-1); // DFS
     }
 }
 
 
 // ---------- bucket_tree ------------
 bucket_tree::bucket_tree() {
-    root = NULL;
-    thres_soft = 0;
-    tree_depth = 0;
 }
 
-bucket_tree::bucket_tree(rule_list & rL, uint32_t thr, bool test_bed, size_t pa_no ) {
-    thres_hard = thr;
-    thres_soft = thr*2;
-    rList = &rL;
-    root = new bucket(); // full address space
-    for (uint32_t i = 0; i < rL.list.size(); i++)
-        root->related_rules.insert(root->related_rules.end(), i);
-
-    gen_candi_split(test_bed);
-    splitNode_fix(root);
-
-    pa_rule_no = pa_no;
-    tree_depth = 0;
+bucket_tree::bucket_tree(rule_list * rL, int level, int cut_no ) {
+    rList = rL;
+    root = new bucket(rList, true); // full address space
+    gen_candi_cuts(cut_no);
+    make_tree(root, level);
 }
 
 bucket_tree::~bucket_tree() {
     delNode(root);
 }
 
+// Mar 22 job save
 pair<bucket *, int> bucket_tree::search_bucket(const addr_5tup& packet, bucket * buck) const {
     if (!buck->sonList.empty()) {
         size_t idx = 0;
@@ -143,9 +143,4 @@ void bucket_tree::print_tree(const string & filename, bool det) { // const
     print_bucket(out, root, det);
     out.close();
 }
-
-
-
-
-
 
