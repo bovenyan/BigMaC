@@ -30,12 +30,14 @@ class rule_list
   private:
     vector<p_rule> sList;
     vector<p_rule> nsList;
-    vector<vector<int> > assoc_map;
-    vector<vector<int> > ns_dep_map;
+    vector<vector<int> > assoc_s2ns_map;
+    vector<vector<int> > dep_ns_map;
+    vector<vector<int> > assoc_ns2s_map; // Mar 28
 
   private:
-    vector<int> dep_ns_rule(p_rule nsRule);
-    vector<int> assoc_ns_rule(p_rule sRule);
+    vector<int> cal_dep_nsRule(int nsRuleID);  // Mar 28
+    vector<int> cal_assoc_nsRule(int sRuleID); // Mar 28
+    vector<int> cal_assoc_sRule(int nsRuleID); // Mar 28
 
   public:
     // constructor
@@ -45,7 +47,7 @@ class rule_list
 
     // initialize
     inline void evolve_gen(const char file_name [], int offspring = 2, double scale = 2, double offset = 1);
-    void cal_assoc_dep(bool assoc, bool dep); // Mar 20
+    void cal_assoc_dep(bool assoc, bool dep); // 
     vector<addr_5tup> header_prep(); // generate headers
 
     // access
@@ -55,6 +57,7 @@ class rule_list
     const p_rule & nsRuleAt(int nsRuleID) const; // Mar 20
     const vector<int> & get_assoc_ns(const int & sRuleID) const; // Mar 20
     const vector<int> & get_dep_ns(const int & nsRuleID) const;  // Mar 20
+    const vector<int> & get_assoc_s(const int & nsRuleID) const; // Mar 28
 
     // linear search related
     int search_match_sRule(addr_5tup packet);
@@ -154,7 +157,7 @@ inline pair<int, int> rule_list::search_match_rules(addr_5tup packet){
     return res;
 }
 
-inline vector<int> rule_list::dep_ns_rule(p_rule nsRule){
+inline vector<int> rule_list::cal_dep_nsRule(p_rule nsRule){
     vector<int> res;
 
     for (int i = 0; i < nsList.size(); ++i){
@@ -166,13 +169,23 @@ inline vector<int> rule_list::dep_ns_rule(p_rule nsRule){
     return res;
 }
 
-inline vector<int> rule_list::assoc_ns_rule(p_rule sRule){
+inline vector<int> rule_list::cal_assoc_nsRule(int sRuleID){
     vector<int> res;
 
     for (int i = 0; i < nsList.size(); ++i){
-        if (nsList[i].overlap(sRule)){
+        if (nsList[i].overlap(sList[sRuleID]))
             res.push_back(i);
-        }
+    }
+
+    return res;
+}
+
+inline vector<int> rule_list::cal_assoc_sRule(int nsRuleID){
+    vector<int> res;
+
+    for (int i = 0; i < sList.size(); ++i){
+        if (sList[i].overlap(nsList[nsRuleID]))
+            res.push_back(i);
     }
 
     return res;
@@ -181,12 +194,14 @@ inline vector<int> rule_list::assoc_ns_rule(p_rule sRule){
 inline void rule_list::cal_assoc_dep(bool cal_assoc, bool cal_dep){
     if (cal_assoc){
         for (int i = 0; i < sList.size(); ++i)
-            assoc_map.push_back(assoc_ns_rule(sList[i]));
+            assoc_s2ns_map.push_back(cal_assoc_nsRule(i));
+        for (int i = 0; i < nsList.size(); ++i)
+            assoc_ns2s_map.push_back(cal_assoc_sRule(i));
     }
 
     if (cal_dep){
         for (int i = 0; i < nsList.size(); ++i)
-            ns_dep_map.push_back(dep_ns_rule(nsList[i]));
+            dep_ns_map.push_back(cal_dep_nsRule(nsList[i]));
     }
 }
 
