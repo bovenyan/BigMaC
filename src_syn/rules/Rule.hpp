@@ -76,8 +76,8 @@ class r_rule {
     inline bool operator==(const r_rule &) const ;
     inline friend uint32_t hash_value(r_rule const &);
     inline bool overlap(const r_rule &) const; // check overlap
-    inline void prune_mic_rule(const r_rule &, const addr_5tup &); // join with tighest part 
-    
+    //inline void prune_mic_rule(const r_rule &, const addr_5tup &); // join with tighest part 
+    inline void join(const r_rule & rhs);
     // debug
     inline std::string get_str() const;
 };
@@ -356,10 +356,15 @@ inline bool r_rule::overlap (const r_rule & rr) const { // check whether another
 }
 
 
-inline void r_rule::prune_mic_rule(const r_rule & rr, const addr_5tup & pack) { // use another r_rule, and pack to prune to a r_rule that tightest to the packet hit.
+/*inline void r_rule::prune_mic_rule(const r_rule & rr, const addr_5tup & pack) { // use another r_rule, and pack to prune to a r_rule that tightest to the packet hit.
     for (uint32_t i =0; i< 4; ++i) {
         addrs[i].getTighter(pack.addrs[i], rr.addrs[i]);
     }
+}*/
+
+inline void r_rule::join(const r_rule & rhs){
+    for (int i = 0; i < 4; ++i)
+        addrs[i].join(rhs.addrs[i]);
 }
 
 /* print and debug

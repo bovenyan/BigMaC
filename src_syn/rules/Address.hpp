@@ -171,7 +171,8 @@ class range_addr {
     inline bool overlap (const range_addr &) const;
     inline bool match (const pref_addr &) const;
     inline bool hit (const uint32_t &) const;
-    inline void getTighter(const uint32_t &, const range_addr &);  // Mar 14
+    inline bool join (const range_addr &) const;
+    // inline void getTighter(const uint32_t &, const range_addr &);  // Mar 14
     inline friend std::vector<range_addr> minus_rav(std::vector<range_addr> &, std::vector<range_addr> &);
 
     inline uint32_t get_extreme(bool) const;
@@ -599,6 +600,13 @@ inline bool range_addr::hit(const uint32_t & ad) const { // whether a packet hit
     return (range[0] <= ad && range[1] >= ad);
 }
 
+inline bool range_addr::join(const range_addr & ad){
+    if (range[0] < ad.range[0])
+        range[0] = ad.range[0];
+    if (range[1] > ad.range[1])
+        range[1] = ad.range[1];
+}
+/*
 inline void range_addr::getTighter(const uint32_t & hit, const range_addr & ra) { // get the micro address
     if (ra.range[0] <= hit && ra.range[0] > range[0]) {
         range[0] = ra.range[0];
@@ -615,7 +623,7 @@ inline void range_addr::getTighter(const uint32_t & hit, const range_addr & ra) 
     if (ra.range[1] >= hit && ra.range[1] < range[1]) {
         range[1] = ra.range[1];
     }
-}
+}*/
 
 inline vector<range_addr> minus_rav(vector<range_addr> & lhs, vector<range_addr> & rhs) { // minus the upper rules
     vector <range_addr> res;

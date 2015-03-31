@@ -157,13 +157,12 @@ inline pair<int, int> rule_list::search_match_rules(addr_5tup packet){
     return res;
 }
 
-inline vector<int> rule_list::cal_dep_nsRule(p_rule nsRule){
+inline vector<int> rule_list::cal_dep_nsRule(int nsRuleID){
     vector<int> res;
 
-    for (int i = 0; i < nsList.size(); ++i){
-        if (nsList[i].overlap(nsRule)){
+    for (int i = 0; i < nsRuleID; ++i){
+        if (nsList[i].overlap(nsList[nsRuleID]))
             res.push_back(i);
-        }
     }
 
     return res;
@@ -233,11 +232,15 @@ inline const p_rule & rule_list::nsRuleAt(int nsRuleID) const{
 }
 
 inline const vector<int> & rule_list::get_assoc_ns(const int & sRuleID) const{
-    return assoc_map[sRuleID];
+    return assoc_s2ns_map[sRuleID];
+}
+
+inline const vector<int> & rule_list::get_assoc_s(const int & nsRuleID) const{
+    return assoc_ns2s_map[nsRuleID];
 }
 
 inline const vector<int> & rule_list::get_dep_ns(const int & nsRuleID) const{
-    return ns_dep_map[nsRuleID];
+    return dep_ns_map[nsRuleID];
 }
 
 inline void rule_list::print(const char sfile[], const char nsfile[]) const{

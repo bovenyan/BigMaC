@@ -105,14 +105,41 @@ void bigmac::MaC(const int & sRuleID){
             
             // check breach
             const vector<int> & dep_rules = rList->get_dep_ns(nsRuleID);
+            const vector<int> & assoc_sRule = rList->get_assoc_s(nsRuleID);
+        
             for (int dep_nsRuleID : dep_rules){
-                // check assoc path
-                
-                if (ns_locs.find(dep_nsRuleID) != ns_locs.end()){ // cached
-                    
+                if (ns_locs.find(dep_nsRuleID) == ns_locs.end()) // not cached;
+                    continue;
+
+                p_rule nsRule_cpy = rList->nsRuleAt(nsRuleID); // make cpy
+                auto res1 = rList->nsRuleAt(dep_nsRuleID).join_rule(nsRule_cpy);
+
+                // check assoc path 
+                for (int path_sRuleID : assoc_sRule){
+                    p_rule sRule_cpy = rList->sRuleAt(path_sRuleID);
+                    auto res2 = res1.first.join_rule(sRule_cpy);
+
+                    if (res2.second){ // ! may conflict
+                        for (int nodeID : sRule_path_map[path_sRuleID]){ //each node
+                            if (nodeID == choosen_node){ // 
+                                ++tag_counter;
+                            }
+                        }
+                    }
                 }
             }
             // check duplicate
+            for (int path_sRuleID : assoc_sRule){
+                if (active_sRule.find(path_sRuleID) == active_sRule.end()) // inact
+                    continue; 
+
+                const map<int,int> & nsEntries_invest = switch_rec[path_sRuleID].nsEntries;
+                for (int nodeID : sRule_path_map[path_sRuleID]){
+                    if (nodeID != choosen_node && (nsEntries_invest.find(nsRuleID) != nsEntries_invest.end()))
+                        ++tag_counter;
+                }
+            }
+
         }
         // sRule-nsRule : location = sRule*nsSize + nsRule;
         ns_loc_rec[sRuleID * rList->nsRule_size() + nsRuleID] = choosen_node;
