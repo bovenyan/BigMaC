@@ -1,7 +1,7 @@
 #ifndef ADDRESS_H
 #define ADDRESS_H
 
-#include "../stdafx.h"
+#include "stdafx.h"
 #include <boost/functional/hash.hpp>
 class range_addr;
 
@@ -35,6 +35,13 @@ class EpochT{
 		sec = rhs.sec;
 		msec = rhs.msec;
 	}
+
+	/*
+	inline EpochT& operator=(const EpochT & rhs){
+		sec = rhs.sec;
+		msec = rhs.msec;
+		return *this;
+	}*/
 
 	inline EpochT operator+(const double & dtime) const{
 		long sec = this->sec + int(dtime);
@@ -134,7 +141,6 @@ class pref_addr {
     inline bool truncate(pref_addr &) const;
     inline bool truncate(range_addr &) const;
 
-    inline void shrink_shift(int bit, int shift_times); // Feb. 4
     inline void mutate(uint32_t, uint32_t, bool);
 
     inline void print() const;
@@ -157,14 +163,13 @@ class range_addr {
     inline bool operator==(const range_addr &) const;
     inline friend uint32_t hash_value(range_addr const & ra);
 
+    inline bool overlap (const range_addr &) const;
     inline range_addr intersect(const range_addr &) const;
     inline bool truncate(range_addr &) const;
-    inline void shrink_shift(int times, int off_times); // Feb. 4
-
-    inline bool overlap (const range_addr &) const;
     inline bool match (const pref_addr &) const;
     inline bool hit (const uint32_t &) const;
     inline void getTighter(const uint32_t &, const range_addr &);  // Mar 14
+    inline pref_addr approx(bool is_port) const; // May 02
     inline friend std::vector<range_addr> minus_rav(std::vector<range_addr> &, std::vector<range_addr> &);
 
     inline uint32_t get_extreme(bool) const;
@@ -428,12 +433,6 @@ inline bool pref_addr::truncate(range_addr & rule) const {
     return true;
 }
 
-inline void pref_addr::shrink_shift(int bit, int shift_times){
-    for (int i = 0; i < bit; ++i)
-        mask |= (mask >> 1);
-    pref = (pref & mask) + (~mask + 1) * shift_times;
-}
-
 inline void pref_addr::mutate(uint32_t s_shrink, uint32_t s_expand, bool port) {
     if (rand()%2 > 0) { // expand
 	if (s_expand == 0)
@@ -553,6 +552,9 @@ inline uint32_t hash_value(range_addr const & ra) {
 
 /* member function
  */
+inline bool range_addr::overlap(const range_addr & ad) const { // whether two range_addr overlap  sym
+    return (!(range[1] < ad.range[0]) || (range[0] > ad.range[1]));
+}
 
 inline range_addr range_addr::intersect(const range_addr & ra) const { // return the join of two range addr  sym
     uint32_t lhs = range[0] > ra.range[0] ? range[0] : ra.range[0];
@@ -568,20 +570,6 @@ inline bool range_addr::truncate(range_addr & ra) const { // truncate a rule usi
     if (ra.range[1] > range[1])
         ra.range[1] = range[1];
     return true;
-}
-
-inline void range_addr::shrink_shift(int times, int off_times){
-    uint32_t offset = (range[0] + range[1])/2;
-    uint32_t len = (range[1] - range[0] + 1) / times;
-    range[0] = offset - len/2;
-    range[1] = offset + len/2;
-    offset = off_times * len;
-    range[0] += offset;
-    range[1] += offset;
-}
-
-inline bool range_addr::overlap(const range_addr & ad) const { // whether two range_addr overlap  sym
-    return (!(range[1] < ad.range[0]) || (range[0] > ad.range[1]));
 }
 
 inline bool range_addr::match(const pref_addr & ad) const { // whether a range matchs a prefix  sym
@@ -608,6 +596,48 @@ inline void range_addr::getTighter(const uint32_t & hit, const range_addr & ra) 
     if (ra.range[1] >= hit && ra.range[1] < range[1]) {
         range[1] = ra.range[1];
     }
+}
+
+inline pref_addr range_addr::approx(bool is_port = true) const{
+    if ((range[1] == ~0) && (range[0] == 0)){
+        pref_addr p_addr ("0.0.0.0/0");
+        return p_addr;
+    }
+    int length = range[1] - range[0] + 1;
+    int app_len = 1;
+
+    while (length/2 > 0){
+        app_len = app_len * 2;
+        length = length/2;
+    }
+
+    pref_addr p_addr; 
+    int mid = range[1] - range[1] % app_len;
+    if ( mid + app_len - 1 <= range[1] ){
+        p_addr.pref = mid;
+    }
+    else{
+        if (mid - app_len >= range[0])
+            p_addr.pref = mid - app_len;
+        else{
+            app_len = app_len/2;
+            if (mid + app_len - 1 <= range[1])
+                p_addr.pref = mid;
+            else 
+                p_addr.pref = mid - app_len/2;
+        }
+    }
+
+    p_addr.mask = ~0;
+    while (app_len > 1){
+        p_addr.mask = p_addr.mask << 1;
+        app_len = app_len/2;
+    }
+
+    if (is_port) // port only has the last 16 bits.
+        p_addr.mask = p_addr.mask | ((~0)<<16);
+    p_addr.pref = p_addr.pref & p_addr.mask;
+    return p_addr;
 }
 
 inline vector<range_addr> minus_rav(vector<range_addr> & lhs, vector<range_addr> & rhs) { // minus the upper rules
