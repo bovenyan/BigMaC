@@ -9,7 +9,7 @@ inline void clearBit(int & res, int i) {
 	res &= ~(1 << i);
 }
 
-inline int checkBit(const int & res, int i) {
+inline bool checkBit(int & res, int i) {
 	return (res>>i) & 1;
 }
 

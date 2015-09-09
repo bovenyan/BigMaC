@@ -53,7 +53,8 @@ void mdCoding::grouping() {
             }
 
             group.push_back(next);
-	    next->initTag(tagSRule);
+
+	    next->initTag(tagSRule); // initiate the SRule Tag
 
             ToProcMem.pop();
         }

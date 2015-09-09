@@ -46,7 +46,8 @@ public:
 
     inline vector<int> depSRule();
 
-    inline void initTag(map<int, pair<int, int> > & tagSRule); // init tag when need to
+    // initiates SRule Tag to 0
+    inline void initTag(map<int, pair<int, int> > & tagSRule);
 
     inline void assign(map<int, pair<int, int> > & tagSRule);
 
@@ -137,25 +138,32 @@ void mdEquation::assign(map<int, pair<int, int> > & tagSRule) {
 
     for (auto iter = param.begin(); iter != param.end(); ++iter) {  // set the bit for nsRule first
         auto sTagIter = tagSRule.find(iter->first);
-           
-	assert (sTagIter != tagSRule.end());
 
-	if (checkBit(sTagIter->second.second, bitIdx) == 0) //
-		continue;
-	if (checkBit(sTagIter->second.first, bitIdx) == iter->second){
-		bit = false;
-		break;
-	}
+        assert (sTagIter != tagSRule.end());
+
+        if (checkBit(sTagIter->second.second, bitIdx) == 0) // not set
+            continue;
+        if (checkBit(sTagIter->second.first, bitIdx) != iter->second) {
+            bit = false;
+            break;
+        }
     }
 
-    for (auto iter = param.begin(); iter != param.end(); ++iter) {
+    for (auto iter = param.begin(); iter != param.end(); ++iter) {  // determine the sRule Tags.
         auto sTagIter = tagSRule.find(iter->first);
 
-        if (sRulePtr != sRuleBit.end()) { // assure conflict analysis
-            assert (sRulePtr->second != (iter->second ^ bit));
-        }
+        assert (sTagIter != tagSRule.end());
+
+        bool sTagBit = checkBit(sTagIter->second.first, bitIdx);
+        bool sTagSet = checkBit(sTagIter->second.second, bitIdx);
+
+        if (sTagSet)
+            assert (sTagBit == (iter->second ^ bit));
         else {
-            sRuleBit[iter->first] = !(iter->second ^ bit);
+            setBit(sTagIter->second.second, bitIdx);  // make it a set
+
+            if (iter->second ^ bit)
+                setBit(sTagIter->second.first, bitIdx);
         }
     }
 }

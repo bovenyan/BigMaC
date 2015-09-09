@@ -24,4 +24,23 @@ public:
     void rule_dep_analysis();
     void print(const std::string &);
 };
+
+class sRuleSet: public rule_list {
+
+};
+
+class nsRuleSet: public rule_list {
+
+};
+
+class sFlowSet: public rule_list {
+public:
+    int switch_id;
+};
+
+class nsFlowSet: public rule_list {
+public:
+    int switch_id;
+};
+
 #endif

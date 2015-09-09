@@ -25,6 +25,7 @@ private:
     void addEquation(mdEquation mde);  
 
 public:
+    // SRule Tag:  key = sRuleID,  pair.first = bit, pair.second = whetherSet
     map<int, pair<int, int> > tagSRule;
 
 public:
