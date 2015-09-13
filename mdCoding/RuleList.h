@@ -13,16 +13,19 @@ public:
     std::unordered_map <uint32_t, std::vector<uint32_t> > dep_map;
     std::vector<size_t> occupancy;
 
+public:
     rule_list();
     rule_list(std::string &, bool = false);
+
     void obtain_dep();
     r_rule get_micro_rule (const addr_5tup &);
     int linear_search(const addr_5tup &);
 
-    void clearHitFlag();
-
-    void rule_dep_analysis();
+    // debug and print
     void print(const std::string &);
+    
+    // void clearHitFlag();   // obsolete
+    // void rule_dep_analysis();
 };
 
 class sRuleSet: public rule_list {

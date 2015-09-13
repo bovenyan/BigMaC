@@ -21,6 +21,14 @@ void mdCoding::calAllConflict() {
     }
 }
 
+void mdCoding::calConflict(vector<mdEquation *> & group){
+    for (int i=0; i < group.size(); ++i){
+    	for (int j = i+1; i < eqList.size(); ++j) {
+	    group[i]->calConflict(group[j]);
+    	}
+    }
+}
+
 void mdCoding::grouping() {
     set<mdEquation *> ToProc;
     vector<set<mdEquation *> > sToNsMap(sRuleNo, set<mdEquation *>());
@@ -54,7 +62,7 @@ void mdCoding::grouping() {
 
             group.push_back(next);
 
-	    next->initTag(tagSRule); // initiate the SRule Tag
+            next->initTag(tagSRule); // initiate the SRule Tag
 
             ToProcMem.pop();
         }
@@ -180,5 +188,21 @@ void mdCoding::randGenEqList(int nsRuleNo, int sRuleNo, int avgDep,
             eq.randGenMdEq(avgDep, sRuleIDs, sRuleNo, rewiringProb, bypassProb);
             eqList.push_back(eq);
         }
+    }
+}
+
+void mdCoding::codingVerify() {
+    bool result;
+    for (auto eq : eqList) {
+        if (eq.bitIdx == -1)
+            continue;
+        else
+            result = eq.verifyEq(tagSRule);
+    }
+    if (!result){
+	BOOST_LOG_SEV(logger_mdCoding, error) << "Verification Failed";
+    }
+    else {
+	BOOST_LOG_SEV(logger_mdCoding, info) << "Verification Failed";
     }
 }

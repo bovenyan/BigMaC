@@ -10,7 +10,9 @@
 #include <set>
 #include <queue>
 #include <cassert>
+#include "sharedHeader.h"
 #include "mathTools.h"
+
 
 using std::map;
 using std::pair;
@@ -24,6 +26,8 @@ class mdEquation {
 private:
     map<int, bool> param;  // id, bit
     unsigned seed = std::chrono::system_clock::now().time_since_epoch().count(); // a time-based seed
+    
+    logging_src::severity_logger< severity_level > logger_mdCoding;
 public:
     // map<mdEquation *, bool> cohereNeigh;
     int bitIdx = -1;
@@ -55,7 +59,11 @@ public:
     inline bool calConflict(mdEquation * anotherEq);
 
     // debug
-    void randGenMdEq(int degree, vector<int>& sRuleIDs, int sRuleNo, double rewiringProb, double bypassProb);
+    inline void randGenMdEq(int degree, vector<int>& sRuleIDs, int sRuleNo, double rewiringProb, double bypassProb);
+
+    inline bool verifyEq (map<int, pair<int, int> > & tagSRule);
+
+    inline void printEq();
 };
 
 void mdEquation::addDep(string str) {
@@ -127,6 +135,7 @@ bool mdEquation::calConflict(mdEquation * rPtr) {
     return false;
 }
 
+
 void mdEquation::initTag(map<int, pair<int, int> > & sRuleTag) {
     for (auto iter = param.begin(); iter != param.end(); ++iter) {
         sRuleTag[iter->first] = std::make_pair(0,0);
@@ -189,4 +198,14 @@ void mdEquation::randGenMdEq(int degree, vector<int> & sRuleIDs, int sRuleNo, do
     }
 }
 
+bool mdEquation::verifyEq(map<int, pair<int, int> > & tagSRule) {
+    for (auto para: param) {
+        int sTag = tagSRule[para.first].first;
+
+        if (checkBit(sTag, bitIdx) != bit ) {
+            return false;
+        }
+    }
+    return true;
+}
 #endif

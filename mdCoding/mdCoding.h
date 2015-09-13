@@ -2,10 +2,14 @@
 #define MD_CODING_H
 
 #include "mdEquation.h"
+#include "sharedHeader.h"
+
 #include <vector>
 #include <random>
+// #include <iostream>
 
 using std::vector;
+// using std::cout; using std::endl;
 
 class mdCoding {
 private:
@@ -13,12 +17,14 @@ private:
     vector<vector<mdEquation *> > codingGroups;
     int sRuleNo;
     int nsRuleNo;
+    
+    logging_src::severity_logger< severity_level > logger_mdCoding;
 
 private:
     void grouping();  // pre-processing, divide into non-joint coding groups.
 
     void calAllConflict();  // pre-processing, calculate all conflicts
-    void calConflict(vector<mdEquation *> group);  // pre-processing, calculate conflict among certain group
+    void calConflict(vector<mdEquation *> & group);  // pre-processing, calculate conflict among certain group
 
     int calNorm(int mode, vector<mdEquation *> eqToProc);  // calculate and coding for each group
 
@@ -40,8 +46,8 @@ public:
      * avgBypass: average Negative dep to by pass.
      */
     void randGenEqList(int eqNo, int varNo, int avgDep,
-                       int avgBypass, int group_size, double rewiring);
-
+                       int avgBypass, int groupNo, double rewiring);
+    void codingVerify();
 };
 
 #endif

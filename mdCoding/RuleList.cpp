@@ -78,12 +78,13 @@ int rule_list::linear_search(const addr_5tup & packet) {
     return -1;
 }
 
+/*
 void rule_list::clearHitFlag() {
     for (size_t idx = 0; idx != list.size(); ++idx) {
         occupancy[idx] = 0;
         list[idx].hit = false;
     }
-}
+}*/
 
 
 /*
@@ -98,6 +99,7 @@ void rule_list::print(const string & filename) {
     file.close();
 }
 
+/*
 void rule_list::rule_dep_analysis() {
     ofstream ff("rule rec");
     for (uint32_t idx = 0; idx < list.size(); ++idx) {
@@ -111,7 +113,4 @@ void rule_list::rule_dep_analysis() {
         ff<<endl;
     }
 }
-
-
-
-
+*/
