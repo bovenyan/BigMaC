@@ -12,12 +12,13 @@
 #include <cassert>
 #include "sharedHeader.h"
 #include "mathTools.h"
-
+#include <sstream>
 
 using std::map;
 using std::pair;
 using std::unordered_set;
 using std::string;
+using std::stringstream;
 using std::vector;
 using std::set;
 using std::queue;
@@ -26,8 +27,8 @@ class mdEquation {
 private:
     map<int, bool> param;  // id, bit
     unsigned seed = std::chrono::system_clock::now().time_since_epoch().count(); // a time-based seed
-    
-    logging_src::severity_logger< severity_level > logger_mdCoding;
+
+    logging_src::severity_logger< severity_level > logger_mdEquation;
 public:
     // map<mdEquation *, bool> cohereNeigh;
     int bitIdx = -1;
@@ -63,7 +64,7 @@ public:
 
     inline bool verifyEq (map<int, pair<int, int> > & tagSRule);
 
-    inline void printEq();
+    inline string toStr();
 };
 
 void mdEquation::addDep(string str) {
@@ -180,32 +181,67 @@ void mdEquation::assign(map<int, pair<int, int> > & tagSRule) {
 void mdEquation::randGenMdEq(int degree, vector<int> & sRuleIDs, int sRuleNo, double rewiringProb, double bypassProb) {
     // the rela id
     std::random_shuffle(sRuleIDs.begin(), sRuleIDs.end());
-
     degree = rand() % degree + degree/2;
+
     for (int i = 0; i < degree && i < sRuleIDs.size(); ++i) {
         // calculate whether bypass or let through
         bool action = true;
-        if ((double)rand()/RAND_MAX > bypassProb) {
+
+        // double val = (double)rand()/RAND_MAX;
+        if ((double)rand()/RAND_MAX < bypassProb) {
+            // if (val < bypassProb) {
+            //    BOOST_LOG_SEV(logger_mdEquation, debug) << "0 " <<val;
             action = false;
             hasByPass = true;
         }
 
         // calculate whether to rewire
-        if ((double)rand()/RAND_MAX > rewiringProb)
-            addDep(sRuleIDs[i], action);
-        else
+        if ((double)rand()/RAND_MAX < rewiringProb) { // rewire
             addDep(rand()%sRuleNo, action);
+        }
+        else {
+            addDep(sRuleIDs[i], action);
+        }
     }
 }
 
 bool mdEquation::verifyEq(map<int, pair<int, int> > & tagSRule) {
-    for (auto para: param) {
+    BOOST_LOG_SEV(logger_mdEquation, debug) << "verification: ";
+    BOOST_LOG_SEV(logger_mdEquation, debug) << "\t nsRule: bitIdx = " << bitIdx \
+	    <<" , bit = " << bit;
+
+    if (bitIdx == -1) { // if ns not tagged, has bypass => false, no bypass => true
+	return !hasByPass;
+    }
+
+    BOOST_LOG_SEV(logger_mdEquation, debug) << "\t sRule:";
+
+    for (auto para: param) { // ns is tagged
+	if (tagSRule.find(para.first) == tagSRule.end()) // s is not tagged
+	    return false; 
+    
         int sTag = tagSRule[para.first].first;
 
-        if (checkBit(sTag, bitIdx) != bit ) {
+	BOOST_LOG_SEV(logger_mdEquation, debug) << "\t\t param Idx: "<< para.first \
+		<<" tag: " << sTag;
+
+        if (checkBit(sTag, bitIdx) != bit )  // s tag is not correct 
             return false;
-        }
     }
     return true;
 }
+
+string mdEquation::toStr() {
+    stringstream ss;
+    ss<<"Equation Info: \n";
+    ss<<"\t bitIdx: "<< bitIdx <<"\n";
+    ss<<"\t bit: "<< bit<<"\n";
+    ss<<"\t hassByPass: "<<hasByPass<<"\n";
+    ss<<"\t param: \n";
+    for (auto para : param) {
+        ss<<"\t\t X:"<<para.first<<" pos:"<<para.second<<"\n";
+    }
+    return ss.str();
+}
+
 #endif

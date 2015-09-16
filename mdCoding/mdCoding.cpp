@@ -21,54 +21,88 @@ void mdCoding::calAllConflict() {
     }
 }
 
-void mdCoding::calConflict(vector<mdEquation *> & group){
-    for (int i=0; i < group.size(); ++i){
-    	for (int j = i+1; i < eqList.size(); ++j) {
-	    group[i]->calConflict(group[j]);
-    	}
+void mdCoding::calConflict(vector<mdEquation *> & group) {
+    for (int i = 0; i < group.size(); ++i) {
+    	BOOST_LOG_SEV(logger_mdCoding, debug)<<"Eq "<<i<<" Conflicts";
+
+        for (int j = i+1; j < group.size(); ++j) {
+            if (group[i]->calConflict(group[j]))
+    		BOOST_LOG_SEV(logger_mdCoding, debug)<<"\t eq "<<j;
+        }
     }
+    BOOST_LOG_SEV(logger_mdCoding, debug)<<"Finished Calculating Conflicts";
 }
 
 void mdCoding::grouping() {
+    /*
+     * If nsRule Tagged, sRule must be tagged
+     * If sRule Tagged, nsRule need not be tagged
+    */
+
     set<mdEquation *> ToProc;
     vector<set<mdEquation *> > sToNsMap(sRuleNo, set<mdEquation *>());
 
-    for (auto eq : eqList) {
+    for (auto & eq : eqList) {  // create the s-to-ns map
         eq.checkDep(sToNsMap);
 
         if (eq.hasByPass) {
             ToProc.insert(&eq);
         }
+
+        // BOOST_LOG_SEV(logger_mdCoding, debug)<<eq.toStr();
     }
 
-    while (!ToProc.empty()) {
-        vector<mdEquation *> group;
 
-        queue<mdEquation *> ToProcMem;
+    while (!ToProc.empty()) {
+        unordered_set<mdEquation *> processed_ns; // ns processed
+        unordered_set<int> processed_s; // s processed
+
+        vector<mdEquation *> group; // record the group
+
+        queue<mdEquation *> ToProcMem; // BFS queue
+
         ToProcMem.push(*ToProc.begin());
+        processed_ns.insert(*ToProc.begin());
+
+    	BOOST_LOG_SEV(logger_mdCoding, debug)<<"Group: ";
 
         while(!ToProcMem.empty()) {
-            mdEquation * next = ToProcMem.front();
+            mdEquation * nextNS = ToProcMem.front();
 
-            if (next->hasByPass) {
-                vector<int> rela = next->depSRule();
-                for (int sRuleID : rela) {
-                    for (mdEquation * nsRulePtr : sToNsMap[sRuleID])
+            vector<int> rela = nextNS->depSRule();
+
+            for (int & sRuleID : rela) {
+                if (processed_s.find(sRuleID) != processed_s.end())
+                    continue;
+
+                processed_s.insert(sRuleID);
+
+                for (mdEquation * nsRulePtr : sToNsMap[sRuleID]) {
+	            // process if: 1. has bypass, 2. never processed
+                    if ((processed_ns.find(nsRulePtr) == processed_ns.end()) && 
+                            nsRulePtr->hasByPass) {
                         ToProcMem.push(nsRulePtr);
+                        processed_ns.insert(nsRulePtr);
+                    }
                 }
-
-                ToProc.erase(ToProc.find(next));
             }
 
-            group.push_back(next);
+            // if (ToProc.find(nextNS) == ToProc.end()) {
+            //     BOOST_LOG_SEV(logger_mdCoding, debug)<<"This is it cannot erase";
+            //     exit(0);
+            // }
 
-            next->initTag(tagSRule); // initiate the SRule Tag
-
+            ToProc.erase(ToProc.find(nextNS));
+            nextNS->initTag(tagSRule); // initiate the SRule Tag
+	    group.push_back(nextNS);
+            BOOST_LOG_SEV(logger_mdCoding, debug)<<"\t eq: "<<nextNS->toStr();
+	    
             ToProcMem.pop();
         }
 
         codingGroups.push_back(group);
     }
+    BOOST_LOG_SEV(logger_mdCoding, debug)<<"Finished Coding Group: "<<codingGroups.size()<<" groups";
 }
 
 int mdCoding::coding() {
@@ -80,6 +114,7 @@ int mdCoding::coding() {
     for (auto group : codingGroups) {
         calConflict(group);
         int used = calNorm(0, group);
+    	BOOST_LOG_SEV(logger_mdCoding, debug)<<"Used: "<< metabit<<" metabit";
 
         if (metabit < used)
             metabit = used;
@@ -93,10 +128,10 @@ int mdCoding::coding() {
 }
 
 int mdCoding::calNorm(int mode, vector<mdEquation *> eqToProc) {
-    map<int, int> groupCount;
+    map<int, int> setCount;
 
     for (auto eqPtr : eqToProc) {
-        map<int, int> candiGroupCount = groupCount;
+        map<int, int> candiGroupCount = setCount;
 
         for (auto neighPtr : eqPtr->conflictNeigh) {
             candiGroupCount.erase(neighPtr->bitIdx);
@@ -105,8 +140,8 @@ int mdCoding::calNorm(int mode, vector<mdEquation *> eqToProc) {
         int chosen_group = -1;
 
         if (candiGroupCount.empty()) { // add a new group
-            chosen_group = groupCount.size()+1;
-            groupCount[chosen_group] = 1;
+            chosen_group = setCount.size()+1;
+            setCount[chosen_group] = 1;
         }
         else {
             switch (mode) {
@@ -118,7 +153,7 @@ int mdCoding::calNorm(int mode, vector<mdEquation *> eqToProc) {
                         small = iter->second;
                     }
                 }
-                ++groupCount[chosen_group];
+                ++setCount[chosen_group];
                 break;
             }
 
@@ -137,72 +172,87 @@ int mdCoding::calNorm(int mode, vector<mdEquation *> eqToProc) {
         eqPtr->bitIdx = chosen_group;
     }
 
-    return groupCount.size();
+    return setCount.size();
 }
 
 
 void mdCoding::randGenEqList(int nsRuleNo, int sRuleNo, int avgDep,
-                             int avgBypass, int groupNo, double rewiringProb) {
+                             double bypassProb, int groupNo, double rewiringProb) {
     this->sRuleNo = sRuleNo;
     this->nsRuleNo = nsRuleNo;
+
     // devide the sRules into groups
     vector<int> sGroupDiv;
     int sGroupSize = sRuleNo/groupNo;
 
-    for (int i = 0; i< groupNo -1; ++i) {
+    for (int i = 0; i < groupNo; ++i) {
         int nextDelim = sGroupSize * i;
 
         if (i != 0)  // randomize
             nextDelim += rand()%sGroupSize - sGroupSize/2;
 
         sGroupDiv.push_back(nextDelim);
+        // BOOST_LOG_SEV(logger_mdCoding, debug)<<"sgroup: "<<nextDelim;
     }
 
     sGroupDiv.push_back(sRuleNo);
+    // BOOST_LOG_SEV(logger_mdCoding, debug)<<"sgroup: "<<sRuleNo;
 
     // devide the nsRules into groups
     vector<int> nsGroupDiv;
     int nsGroupSize = sRuleNo/groupNo;
 
-    for (int i = 0; i< groupNo -1; ++i) {
+    for (int i = 0; i < groupNo ; ++i) {
         int nextDelim = nsGroupSize * i;
 
         if (i != 0)  // randomize
             nextDelim += rand()%nsGroupSize - nsGroupSize/2;
 
         nsGroupDiv.push_back(nextDelim);
+        // BOOST_LOG_SEV(logger_mdCoding, debug)<<"nsgroup: "<<nextDelim;
     }
 
     nsGroupDiv.push_back(nsRuleNo);
+    // BOOST_LOG_SEV(logger_mdCoding, debug)<<"nsgroup: "<<nsRuleNo;
 
-    double bypassProb = (double)avgBypass/(nsRuleNo*avgDep);
+
+    // BOOST_LOG_SEV(logger_mdCoding, debug)<<"groupNo: "<<groupNo;
+    // BOOST_LOG_SEV(logger_mdCoding, debug)<<"rewiringProb: "<<rewiringProb;
 
     for (int groupID = 0; groupID < groupNo; ++groupID) {
-        for (int nsRuleID = nsGroupDiv[groupID]; nsRuleID < nsGroupDiv[groupID+1]+1; ++nsRuleID) {
+        // BOOST_LOG_SEV(logger_mdCoding, debug)<<"groupNo: "<<groupID;
+
+        vector<int> sRuleIDs;  // create sRuleIDs for shuffling
+        for (int i = sGroupDiv[groupID]; i < sGroupDiv[groupID+1]; ++i) {
+            sRuleIDs.push_back(i);
+        }
+
+
+        for (int nsRuleID = nsGroupDiv[groupID]; nsRuleID < nsGroupDiv[groupID+1]; ++nsRuleID) {
+            // BOOST_LOG_SEV(logger_mdCoding, debug)<<"\t nsRule: "<<nsRuleID << " init ";
             mdEquation eq;
-
-            vector<int> sRuleIDs;
-            for (int i = sGroupDiv[groupID]; i < sGroupDiv[groupID+1]; ++i)
-                sRuleIDs.push_back(i);
-
             eq.randGenMdEq(avgDep, sRuleIDs, sRuleNo, rewiringProb, bypassProb);
             eqList.push_back(eq);
         }
     }
+
+    // debug,
+    /*
+    for (auto eq: eqList){
+    BOOST_LOG_SEV(logger_mdCoding, debug)<<eq.toStr();
+    }*/
 }
 
 void mdCoding::codingVerify() {
     bool result;
     for (auto eq : eqList) {
-        if (eq.bitIdx == -1)
-            continue;
-        else
-            result = eq.verifyEq(tagSRule);
+	result = eq.verifyEq(tagSRule);
     }
-    if (!result){
-	BOOST_LOG_SEV(logger_mdCoding, error) << "Verification Failed";
+
+    if (!result) {
+        BOOST_LOG_SEV(logger_mdCoding, error) << "Verification Failed";
     }
     else {
-	BOOST_LOG_SEV(logger_mdCoding, info) << "Verification Failed";
+        BOOST_LOG_SEV(logger_mdCoding, info) << "Verification Passed";
     }
 }

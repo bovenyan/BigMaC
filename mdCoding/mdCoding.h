@@ -46,7 +46,7 @@ public:
      * avgBypass: average Negative dep to by pass.
      */
     void randGenEqList(int eqNo, int varNo, int avgDep,
-                       int avgBypass, int groupNo, double rewiring);
+                       double avgBypass, int groupNo, double rewiring);
     void codingVerify();
 };
 

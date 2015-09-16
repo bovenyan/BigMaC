@@ -13,8 +13,9 @@ using std::cout;
 void logging_init(int level) {
     logging::add_file_log(
         logging_keywords::file_name = "mdCoding.log",
-        logging_keywords::rotation_size = 10 * 1024 * 1024,
+        // logging_keywords::rotation_size = 10 * 1024 * 1024,
         logging_keywords::time_based_rotation = logging_sinks::file::rotation_at_time_point(0,0,0),
+	logging_keywords::auto_flush = true,
         logging_keywords::format = (
                                        logging_expr::stream <<
                                        logging_expr::format_date_time< boost::posix_time::ptime >
@@ -66,20 +67,21 @@ int main(int ac, char * av[]) {
         int nsRuleNo;
         int sRuleNo;
         int avgDependency;
-        double avgBypass;
+        double bypassProb;
         int groupSize;
         double rewiringProb;
 
         po::options_description desc("Allowed options");
         desc.add_options()
         ("help", "produce help message")
-        ("debug", po::value<int>(&log)->default_value(3), "Debugging level: \n trace=0, debug=1, info=2, warning=3, error=4, fatal=5")
+        ("log", po::value<int>(&log)->default_value(3), "Log level: \n trace=0, debug=1, info=2, warning=3, error=4, fatal=5")
+        ("debug", "Log >= 1")
         ("mdcoding, M", "testing metadata coding")
         ("nsRule, n", po::value<int>(&nsRuleNo)->default_value(1000), "No. of NSRules")
         ("sRule, s", po::value<int>(&sRuleNo)->default_value(1000), "No. of SRules")
         ("dependency, d", po::value<int>(&avgDependency)->default_value(10), "No. of SRules overlapping each NSRule")
         ("group, g", po::value<int>(&groupSize)->default_value(50), "No. of NSrules in a group")
-        ("bypass", po::value<double>(&avgBypass)->default_value(0.1), "Probability of communications to bypass")
+        ("bypass", po::value<double>(&bypassProb)->default_value(0.05), "Probability of communications to bypass")
         ("rewiring", po::value<double>(&rewiringProb)->default_value(0.05), "No. of communications to rewire")
         ;
 
@@ -97,14 +99,18 @@ int main(int ac, char * av[]) {
             return 0;
         }
 
+        if (v_map.count("debug")) {
+	    log = 1;
+	}
+
         logging_init(log);
 
         if (v_map.count("mdcoding")) {
             mdCoding mdCodingTestObj;
 
             mdCodingTestObj.randGenEqList(nsRuleNo, sRuleNo, avgDependency,
-                                          avgBypass, int(nsRuleNo/groupSize), rewiringProb);
-	    BOOST_LOG_SEV(logger_main, info) << "Finished generating equations";
+                                          bypassProb, int(nsRuleNo/groupSize), rewiringProb);
+	    BOOST_LOG_SEV(logger_main, debug) << "Finished generating equations";
 
             mdCodingTestObj.coding();
 	    BOOST_LOG_SEV(logger_main, info) << "Finished coding equations";
