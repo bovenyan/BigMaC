@@ -23,10 +23,12 @@ private:
 private:
     void grouping();  // pre-processing, divide into non-joint coding groups.
 
-    void calAllConflict();  // pre-processing, calculate all conflicts
-    void calConflict(vector<mdEquation *> & group);  // pre-processing, calculate conflict among certain group
+    // void calAllConflict();  // pre-processing, calculate all conflicts
+    // void calConflict(vector<mdEquation *> & group);  // pre-processing, calculate conflict among certain group, conflict online cal
 
-    int calNorm(int mode, vector<mdEquation *> eqToProc);  // calculate and coding for each group
+    int calNorm(int mode, vector<mdEquation *> & group);  // calculate and coding for each group
+    
+    int assignCoding(vector<mdEquation *> & group, int mode);  // calculate and coding for each group
 
     void addEquation(mdEquation mde);  
 

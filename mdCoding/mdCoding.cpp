@@ -13,6 +13,7 @@ void mdCoding::addEquation(mdEquation mde) {
     eqList.push_back(mde);
 }
 
+/*
 void mdCoding::calAllConflict() {
     for (int i=0; i < eqList.size(); ++i) {
         for (int j = i+1; j < eqList.size(); ++j) {
@@ -23,15 +24,16 @@ void mdCoding::calAllConflict() {
 
 void mdCoding::calConflict(vector<mdEquation *> & group) {
     for (int i = 0; i < group.size(); ++i) {
-    	BOOST_LOG_SEV(logger_mdCoding, debug)<<"Eq "<<i<<" Conflicts";
+        BOOST_LOG_SEV(logger_mdCoding, debug)<<"Eq "<<i<<" Conflicts";
 
         for (int j = i+1; j < group.size(); ++j) {
             if (group[i]->calConflict(group[j]))
-    		BOOST_LOG_SEV(logger_mdCoding, debug)<<"\t eq "<<j;
+                BOOST_LOG_SEV(logger_mdCoding, debug)<<"\t eq "<<j;
         }
     }
     BOOST_LOG_SEV(logger_mdCoding, debug)<<"Finished Calculating Conflicts";
 }
+*/
 
 void mdCoding::grouping() {
     /*
@@ -64,7 +66,7 @@ void mdCoding::grouping() {
         ToProcMem.push(*ToProc.begin());
         processed_ns.insert(*ToProc.begin());
 
-    	BOOST_LOG_SEV(logger_mdCoding, debug)<<"Group: ";
+        BOOST_LOG_SEV(logger_mdCoding, debug)<<"Group: ";
 
         while(!ToProcMem.empty()) {
             mdEquation * nextNS = ToProcMem.front();
@@ -78,8 +80,8 @@ void mdCoding::grouping() {
                 processed_s.insert(sRuleID);
 
                 for (mdEquation * nsRulePtr : sToNsMap[sRuleID]) {
-	            // process if: 1. has bypass, 2. never processed
-                    if ((processed_ns.find(nsRulePtr) == processed_ns.end()) && 
+                    // process if: 1. has bypass, 2. never processed
+                    if ((processed_ns.find(nsRulePtr) == processed_ns.end()) &&
                             nsRulePtr->hasByPass) {
                         ToProcMem.push(nsRulePtr);
                         processed_ns.insert(nsRulePtr);
@@ -94,15 +96,36 @@ void mdCoding::grouping() {
 
             ToProc.erase(ToProc.find(nextNS));
             nextNS->initTag(tagSRule); // initiate the SRule Tag
-	    group.push_back(nextNS);
+            group.push_back(nextNS);
             BOOST_LOG_SEV(logger_mdCoding, debug)<<"\t eq: "<<nextNS->toStr();
-	    
+
             ToProcMem.pop();
         }
 
         codingGroups.push_back(group);
     }
     BOOST_LOG_SEV(logger_mdCoding, debug)<<"Finished Coding Group: "<<codingGroups.size()<<" groups";
+}
+
+int mdCoding::assignCoding(vector<mdEquation *> & group, int mode=0) {
+    // TODO: sort by size
+
+    vector <pair <mdEquation*, int> > nonConfSets;
+
+    for (auto eqPtr : group) {
+        vector<pair<int,int> > choice;
+
+        // check whether it conflicts existing groups
+
+        for (int idx = 0; idx < nonConfSets.size(); ++idx) {
+            if (!nonConfSets[idx].first->calConflict(eqPtr).first) { // not conflicting
+		choice.push_back(std::make_pair(idx, nonConfSets[idx].second)); 
+            }
+        }
+
+
+    }
+    //
 }
 
 int mdCoding::coding() {
@@ -112,9 +135,8 @@ int mdCoding::coding() {
 
     // code within each group
     for (auto group : codingGroups) {
-        calConflict(group);
+        // calConflict(group);  //TODO: rephrase
         int used = calNorm(0, group);
-    	BOOST_LOG_SEV(logger_mdCoding, debug)<<"Used: "<< metabit<<" metabit";
 
         if (metabit < used)
             metabit = used;
@@ -124,55 +146,72 @@ int mdCoding::coding() {
         }
     }
 
+    BOOST_LOG_SEV(logger_mdCoding, debug)<<"Used: "<< metabit<<" metabit";
     return metabit;
 }
 
-int mdCoding::calNorm(int mode, vector<mdEquation *> eqToProc) {
-    map<int, int> setCount;
+int mdCoding::calNorm(int mode, vector<mdEquation *> & group) {
+    map <int, int> nonConfSets;
 
-    for (auto eqPtr : eqToProc) {
-        map<int, int> candiGroupCount = setCount;
+    BOOST_LOG_SEV(logger_mdCoding, debug)<<"Entering calNorm!!";
+    BOOST_LOG_SEV(logger_mdCoding, debug)<<"Entering calNorm!!";
+    BOOST_LOG_SEV(logger_mdCoding, debug)<<"Entering calNorm!!";
+    BOOST_LOG_SEV(logger_mdCoding, debug)<<"Important Things Say Thrice !!";
+
+    for (auto eqPtr : group) {
+        BOOST_LOG_SEV(logger_mdCoding, debug)<<"Process an eq";
+
+        map<int, int> candiNonConfSets = nonConfSets;
+
+        int choiceNo = candiNonConfSets.size();
 
         for (auto neighPtr : eqPtr->conflictNeigh) {
-            candiGroupCount.erase(neighPtr->bitIdx);
+            int tagIdx = neighPtr->bitIdx;
+            if (tagIdx != -1 && candiNonConfSets.find(tagIdx) != candiNonConfSets.end())  // tagged
+                candiNonConfSets.erase(tagIdx);
         }
 
-        int chosen_group = -1;
+        int choice = -1;
 
-        if (candiGroupCount.empty()) { // add a new group
-            chosen_group = setCount.size()+1;
-            setCount[chosen_group] = 1;
+        // choice is from 0 to n-1
+        if (candiNonConfSets.empty()) { // add a new group if conflicting with any
+            choice = nonConfSets.size();
+            nonConfSets[choice] = 1;
         }
         else {
             switch (mode) {
-            case 0: { // group to smaller groups
+            case 0: { // greedily group to smallest groups
                 int small = std::numeric_limits<int>::max();
-                for (auto iter = candiGroupCount.begin(); iter != candiGroupCount.end(); ++iter) {
-                    if (iter->second < small) { // increment counter
-                        chosen_group = iter->first;
-                        small = iter->second;
+
+                for (auto setRec : candiNonConfSets) {
+                    if (setRec.second < small) {
+                        choice = setRec.first;
+                        small = setRec.second;
                     }
                 }
-                ++setCount[chosen_group];
+
+                ++nonConfSets[choice];
                 break;
             }
 
             case 1: {// randomly group
-                auto iter = candiGroupCount.begin();
-                std::advance(iter, rand()%candiGroupCount.size());
+                auto iter = candiNonConfSets.begin();
+                std::advance(iter, rand()%candiNonConfSets.size());
                 ++iter->second;
-                chosen_group = iter->first;
+                choice = iter->first;
                 break;
             }
+
             default:
                 break;
             }
         }
 
-        eqPtr->bitIdx = chosen_group;
+        eqPtr->bitIdx = choice;
     }
 
-    return setCount.size();
+    BOOST_LOG_SEV(logger_mdCoding, debug)<<"bit: "<<nonConfSets.size();
+    return nonConfSets.size();
 }
 
 
@@ -246,7 +285,7 @@ void mdCoding::randGenEqList(int nsRuleNo, int sRuleNo, int avgDep,
 void mdCoding::codingVerify() {
     bool result;
     for (auto eq : eqList) {
-	result = eq.verifyEq(tagSRule);
+        result = eq.verifyEq(tagSRule);
     }
 
     if (!result) {

@@ -57,7 +57,8 @@ public:
     inline void assign(map<int, pair<int, int> > & tagSRule);
 
     // conflict check
-    inline bool calConflict(mdEquation * anotherEq);
+    inline pair<bool, bool> calConflict(mdEquation * anotherEq);
+    inline void mergeNonConf(mdEquation * anotherEq, bool reverse);
 
     // debug
     inline void randGenMdEq(int degree, vector<int>& sRuleIDs, int sRuleNo, double rewiringProb, double bypassProb);
@@ -114,7 +115,7 @@ vector<int> mdEquation::depSRule() {
     return sRuleIDs;
 }
 
-bool mdEquation::calConflict(mdEquation * rPtr) {
+pair<bool, bool> mdEquation::calConflict(mdEquation * rPtr) {
     bool positive = true;
     bool negative = true;
 
@@ -130,12 +131,34 @@ bool mdEquation::calConflict(mdEquation * rPtr) {
     if (!positive && !negative) {
         conflictNeigh.insert(rPtr);
         rPtr->conflictNeigh.insert(this);
-        return true;
+        return std::make_pair(true, false);
     }
 
-    return false;
+    return std::make_pair(false, negative);
 }
 
+void mdEquation::mergeNonConf( mdEquation * rPtr, bool rev){
+    if (!rev){
+    	for (auto para: rPtr->param){
+	    if (param.find(para.first) != param.end()){
+	    	assert (param[para.first] == para.second);
+	    }
+	    else{
+	   	param[para.first] = para.second; 
+	    }
+	}
+    }
+    else{
+    	for (auto para: rPtr->param){
+	    if (param.find(para.first) != param.end()){
+	    	assert (param[para.first] != para.second);
+	    }
+	    else{
+	   	param[para.first] = !para.second; 
+	    }
+	}
+    }
+}
 
 void mdEquation::initTag(map<int, pair<int, int> > & sRuleTag) {
     for (auto iter = param.begin(); iter != param.end(); ++iter) {
@@ -143,13 +166,14 @@ void mdEquation::initTag(map<int, pair<int, int> > & sRuleTag) {
     }
 }
 
-void mdEquation::assign(map<int, pair<int, int> > & tagSRule) {
+void mdEquation::assign(map<int, pair<int, int> > & sRuleTag) {
     bit = true;
+    
 
     for (auto iter = param.begin(); iter != param.end(); ++iter) {  // set the bit for nsRule first
-        auto sTagIter = tagSRule.find(iter->first);
+        auto sTagIter = sRuleTag.find(iter->first);
 
-        assert (sTagIter != tagSRule.end());
+        assert (sTagIter != sRuleTag.end());
 
         if (checkBit(sTagIter->second.second, bitIdx) == 0) // not set
             continue;
@@ -159,22 +183,30 @@ void mdEquation::assign(map<int, pair<int, int> > & tagSRule) {
         }
     }
 
-    for (auto iter = param.begin(); iter != param.end(); ++iter) {  // determine the sRule Tags.
-        auto sTagIter = tagSRule.find(iter->first);
+    BOOST_LOG_SEV(logger_mdEquation, debug) << "assign " <<toStr();
 
-        assert (sTagIter != tagSRule.end());
+    for (auto iter = param.begin(); iter != param.end(); ++iter) {  // determine the sRule Tags.
+        auto sTagIter = sRuleTag.find(iter->first);
+
+        assert (sTagIter != sRuleTag.end());
 
         bool sTagBit = checkBit(sTagIter->second.first, bitIdx);
         bool sTagSet = checkBit(sTagIter->second.second, bitIdx);
 
+    	BOOST_LOG_SEV(logger_mdEquation, debug) << "\t Before assign sRule " << iter->first;
+    	BOOST_LOG_SEV(logger_mdEquation, debug) << "\t\t\t sTag: " << sTagIter->second.first<<" mask:"<<sTagIter->second.second;
+
         if (sTagSet)
-            assert (sTagBit == (iter->second ^ bit));
+            assert (sTagBit != (iter->second ^ bit));
         else {
             setBit(sTagIter->second.second, bitIdx);  // make it a set
 
-            if (iter->second ^ bit)
+            if (!(iter->second ^ bit))
                 setBit(sTagIter->second.first, bitIdx);
         }
+
+    	BOOST_LOG_SEV(logger_mdEquation, debug) << "\t After assigned sRule " << iter->first;
+    	BOOST_LOG_SEV(logger_mdEquation, debug) << "\t\t\t sTag: " << sTagIter->second.first<<" mask:"<<sTagIter->second.second;
     }
 }
 
