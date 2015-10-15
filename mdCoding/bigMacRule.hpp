@@ -11,6 +11,9 @@ class sRule;
 class nsRule;
 
 class rule {
+private:
+    unordered_set<int> placement;
+
 public:
     pref_addr matchFields[4];
 
@@ -35,9 +38,6 @@ public:
 };
 
 class sRule : public rule {
-private:
-    unordered_set<int> placement;
-
 public:
     vector<int> route;
 
