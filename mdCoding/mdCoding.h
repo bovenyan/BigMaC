@@ -26,9 +26,9 @@ private:
     // void calAllConflict();  // pre-processing, calculate all conflicts
     // void calConflict(vector<mdEquation *> & group);  // pre-processing, calculate conflict among certain group, conflict online cal
 
-    int calNorm(int mode, vector<mdEquation *> & group);  // calculate and coding for each group
+    // int calNorm(int mode, vector<mdEquation *> & group);  // calculate and coding for each group
     
-    int assignCoding(vector<mdEquation *> & group, int mode);  // calculate and coding for each group
+    int codeNSrule(vector<mdEquation *> & group, int mode);  // calculate and coding for each group
 
     void addEquation(mdEquation mde);  
 
@@ -39,6 +39,9 @@ public:
 public:
     mdCoding();
 
+    void randGenEqList(int eqNo, int varNo, int avgDep,
+                       double avgBypass, int groupNo, double rewiring);
+
     int coding();  // coding the things 
 
     // debug:
@@ -47,8 +50,6 @@ public:
      * avgDep: average Depedent sRule of each ns rule
      * avgBypass: average Negative dep to by pass.
      */
-    void randGenEqList(int eqNo, int varNo, int avgDep,
-                       double avgBypass, int groupNo, double rewiring);
     void codingVerify();
 };
 

@@ -54,7 +54,7 @@ public:
     // initiates SRule Tag to 0
     inline void initTag(map<int, pair<int, int> > & tagSRule);
 
-    inline void assign(map<int, pair<int, int> > & tagSRule);
+    inline void assignSrule(map<int, pair<int, int> > & tagSRule);
 
     // conflict check
     inline pair<bool, bool> calConflict(mdEquation * anotherEq);
@@ -166,24 +166,8 @@ void mdEquation::initTag(map<int, pair<int, int> > & sRuleTag) {
     }
 }
 
-void mdEquation::assign(map<int, pair<int, int> > & sRuleTag) {
-    bit = true;
-    
-
-    for (auto iter = param.begin(); iter != param.end(); ++iter) {  // set the bit for nsRule first
-        auto sTagIter = sRuleTag.find(iter->first);
-
-        assert (sTagIter != sRuleTag.end());
-
-        if (checkBit(sTagIter->second.second, bitIdx) == 0) // not set
-            continue;
-        if (checkBit(sTagIter->second.first, bitIdx) != iter->second) {
-            bit = false;
-            break;
-        }
-    }
-
-    BOOST_LOG_SEV(logger_mdEquation, debug) << "assign " <<toStr();
+void mdEquation::assignSrule(map<int, pair<int, int> > & sRuleTag) {
+    // BOOST_LOG_SEV(logger_mdEquation, debug) << "assign " <<toStr();
 
     for (auto iter = param.begin(); iter != param.end(); ++iter) {  // determine the sRule Tags.
         auto sTagIter = sRuleTag.find(iter->first);
@@ -193,8 +177,8 @@ void mdEquation::assign(map<int, pair<int, int> > & sRuleTag) {
         bool sTagBit = checkBit(sTagIter->second.first, bitIdx);
         bool sTagSet = checkBit(sTagIter->second.second, bitIdx);
 
-    	BOOST_LOG_SEV(logger_mdEquation, debug) << "\t Before assign sRule " << iter->first;
-    	BOOST_LOG_SEV(logger_mdEquation, debug) << "\t\t\t sTag: " << sTagIter->second.first<<" mask:"<<sTagIter->second.second;
+    	// BOOST_LOG_SEV(logger_mdEquation, debug) << "\t Before assign sRule " << iter->first;
+    	// BOOST_LOG_SEV(logger_mdEquation, debug) << "\t\t\t sTag: " << sTagIter->second.first<<" mask:"<<sTagIter->second.second;
 
         if (sTagSet)
             assert (sTagBit != (iter->second ^ bit));
@@ -205,8 +189,8 @@ void mdEquation::assign(map<int, pair<int, int> > & sRuleTag) {
                 setBit(sTagIter->second.first, bitIdx);
         }
 
-    	BOOST_LOG_SEV(logger_mdEquation, debug) << "\t After assigned sRule " << iter->first;
-    	BOOST_LOG_SEV(logger_mdEquation, debug) << "\t\t\t sTag: " << sTagIter->second.first<<" mask:"<<sTagIter->second.second;
+    	// BOOST_LOG_SEV(logger_mdEquation, debug) << "\t After assigned sRule " << iter->first;
+    	// BOOST_LOG_SEV(logger_mdEquation, debug) << "\t\t\t sTag: " << sTagIter->second.first<<" mask:"<<sTagIter->second.second;
     }
 }
 
@@ -238,15 +222,15 @@ void mdEquation::randGenMdEq(int degree, vector<int> & sRuleIDs, int sRuleNo, do
 }
 
 bool mdEquation::verifyEq(map<int, pair<int, int> > & tagSRule) {
-    BOOST_LOG_SEV(logger_mdEquation, debug) << "verification: ";
-    BOOST_LOG_SEV(logger_mdEquation, debug) << "\t nsRule: bitIdx = " << bitIdx \
+    // BOOST_LOG_SEV(logger_mdEquation, debug) << "verification: ";
+    // BOOST_LOG_SEV(logger_mdEquation, debug) << "\t nsRule: bitIdx = " << bitIdx \
 	    <<" , bit = " << bit;
 
     if (bitIdx == -1) { // if ns not tagged, has bypass => false, no bypass => true
 	return !hasByPass;
     }
 
-    BOOST_LOG_SEV(logger_mdEquation, debug) << "\t sRule:";
+    // BOOST_LOG_SEV(logger_mdEquation, debug) << "\t sRule:";
 
     for (auto para: param) { // ns is tagged
 	if (tagSRule.find(para.first) == tagSRule.end()) // s is not tagged
@@ -254,10 +238,10 @@ bool mdEquation::verifyEq(map<int, pair<int, int> > & tagSRule) {
     
         int sTag = tagSRule[para.first].first;
 
-	BOOST_LOG_SEV(logger_mdEquation, debug) << "\t\t param Idx: "<< para.first \
-		<<" tag: " << sTag;
+	//BOOST_LOG_SEV(logger_mdEquation, debug) << "\t\t param Idx: "<< para.first \
+	// 	<<" tag: " << sTag;
 
-        if (checkBit(sTag, bitIdx) != bit )  // s tag is not correct 
+        if (checkBit(sTag, bitIdx) == (bit ^ para.second) )  // s tag is not correct 
             return false;
     }
     return true;

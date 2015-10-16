@@ -2,10 +2,13 @@
 #include <cstdlib>
 #include <queue>
 #include <set>
+#include <map>
 #include <limits>
 
 using std::queue;
 using std::set;
+using std::map;
+using std::make_pair;
 
 mdCoding::mdCoding() {}
 
@@ -66,7 +69,7 @@ void mdCoding::grouping() {
         ToProcMem.push(*ToProc.begin());
         processed_ns.insert(*ToProc.begin());
 
-        BOOST_LOG_SEV(logger_mdCoding, debug)<<"Group: ";
+        // BOOST_LOG_SEV(logger_mdCoding, debug)<<"Group: ";
 
         while(!ToProcMem.empty()) {
             mdEquation * nextNS = ToProcMem.front();
@@ -97,7 +100,7 @@ void mdCoding::grouping() {
             ToProc.erase(ToProc.find(nextNS));
             nextNS->initTag(tagSRule); // initiate the SRule Tag
             group.push_back(nextNS);
-            BOOST_LOG_SEV(logger_mdCoding, debug)<<"\t eq: "<<nextNS->toStr();
+            // BOOST_LOG_SEV(logger_mdCoding, debug)<<"\t eq: "<<nextNS->toStr();
 
             ToProcMem.pop();
         }
@@ -107,25 +110,60 @@ void mdCoding::grouping() {
     BOOST_LOG_SEV(logger_mdCoding, debug)<<"Finished Coding Group: "<<codingGroups.size()<<" groups";
 }
 
-int mdCoding::assignCoding(vector<mdEquation *> & group, int mode=0) {
+int mdCoding::codeNSrule(vector<mdEquation *> & group, int mode=0) {
     // TODO: sort by size
 
-    vector <pair <mdEquation*, int> > nonConfSets;
+    vector <pair <mdEquation, int> > nonConfSets; // idx: setID {first: merged eq, second: size}
 
     for (auto eqPtr : group) {
-        vector<pair<int,int> > choice;
+        vector<pair<int, bool> > choiceRec; // first: no. of Eq. second: reverse?
+	vector<int> feasibleChoice;
 
         // check whether it conflicts existing groups
+        int minSize = std::numeric_limits<int>::max();
+        int choice = -1;
+
+	bool reverse = false;
 
         for (int idx = 0; idx < nonConfSets.size(); ++idx) {
-            if (!nonConfSets[idx].first->calConflict(eqPtr).first) { // not conflicting
-		choice.push_back(std::make_pair(idx, nonConfSets[idx].second)); 
+	    auto confCheck = nonConfSets[idx].first.calConflict(eqPtr);
+
+            if (!confCheck.first) { // not conflicting
+                choiceRec.push_back(std::make_pair(idx, confCheck.second));
+		feasibleChoice.push_back(idx);
+
+		if (nonConfSets[idx].second < minSize){ // for min 
+		    choice = idx;
+		    minSize = nonConfSets[idx].second;
+		    reverse = confCheck.second; 
+		}
             }
         }
 
+        if (feasibleChoice.empty()) {
+	    eqPtr->bitIdx = nonConfSets.size();
+	    eqPtr->bit = 1;
+            mdEquation merged = *eqPtr;
+            nonConfSets.push_back(std::make_pair(merged, 1));
+        }
+        else {
+            if (mode == 0) { // choose the smallest set
+		eqPtr->bitIdx = choice;
+		eqPtr->bit = !reverse;
+            }
+            if (mode == 1) { // choose random
+		choice = rand()%feasibleChoice.size(); // first find in feasible term
+		reverse = choiceRec[choice].second; 
+		choice = feasibleChoice[choice];
+		eqPtr->bitIdx = choice;
+		eqPtr->bit = !reverse;
+            }
 
+	    nonConfSets[choice].first.mergeNonConf(eqPtr, reverse);
+        }
     }
-    //
+
+    return nonConfSets.size(); 
 }
 
 int mdCoding::coding() {
@@ -136,13 +174,14 @@ int mdCoding::coding() {
     // code within each group
     for (auto group : codingGroups) {
         // calConflict(group);  //TODO: rephrase
-        int used = calNorm(0, group);
+        // int used = calNorm(0, group);
+	int used = codeNSrule(group);
 
         if (metabit < used)
             metabit = used;
 
         for (auto eqPtr : group) {
-            eqPtr->assign(tagSRule);
+            eqPtr->assignSrule(tagSRule);
         }
     }
 
@@ -150,6 +189,7 @@ int mdCoding::coding() {
     return metabit;
 }
 
+/*
 int mdCoding::calNorm(int mode, vector<mdEquation *> & group) {
     map <int, int> nonConfSets;
 
@@ -213,7 +253,7 @@ int mdCoding::calNorm(int mode, vector<mdEquation *> & group) {
     BOOST_LOG_SEV(logger_mdCoding, debug)<<"bit: "<<nonConfSets.size();
     return nonConfSets.size();
 }
-
+*/
 
 void mdCoding::randGenEqList(int nsRuleNo, int sRuleNo, int avgDep,
                              double bypassProb, int groupNo, double rewiringProb) {
@@ -285,13 +325,12 @@ void mdCoding::randGenEqList(int nsRuleNo, int sRuleNo, int avgDep,
 void mdCoding::codingVerify() {
     bool result;
     for (auto eq : eqList) {
-        result = eq.verifyEq(tagSRule);
+        if(!eq.verifyEq(tagSRule)){
+            BOOST_LOG_SEV(logger_mdCoding, error) << "Verification Failed";	
+	    exit(0);
+	}
     }
 
-    if (!result) {
-        BOOST_LOG_SEV(logger_mdCoding, error) << "Verification Failed";
-    }
-    else {
-        BOOST_LOG_SEV(logger_mdCoding, info) << "Verification Passed";
-    }
+    BOOST_LOG_SEV(logger_mdCoding, info) << "Verification Passed";
+
 }

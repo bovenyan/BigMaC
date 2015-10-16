@@ -30,6 +30,7 @@ public:
     inline addr_5tup randCornerPacket() const;
     inline addr_5tup randPacket() const;
 
+
     // debug
     inline std::string toStr() const;
 };
@@ -39,7 +40,7 @@ private:
     unordered_set<int> placement;
 
 public:
-    vector<int> route;
+    vector<vector<int> > routes;
 
 public:
     // constructor 
@@ -52,11 +53,12 @@ public:
 
 class nsRule : public rule {
 private:
-    vector<sRule *> depSRule;
     unordered_set<int> placement;
 
 public:
+    vector<sRule *> depSRule;
     inline nsRule();
+    
 };
 
 
