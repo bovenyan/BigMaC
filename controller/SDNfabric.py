@@ -1,6 +1,8 @@
 from mininet.topo import Topo
 from mininet.net import Mininet
-from mininet.node import OVSController
+from mininet.cli import CLI
+from mininet.node import RemoteController
+
 
 # parsing the input file
 def parseTopoFile(filename):
@@ -13,14 +15,15 @@ def parseTopoFile(filename):
     for line in lines:
         line = line[:-1]
 
+        print line
         if 'node' in line:
-            line.split(':')
-            nodeNo = int(nodeNo)
+            temp = line.split(':')
+            nodeNo = int(temp[1])
 
-        if '-' in lines:
+        if '-' in line:
             pairStr = line.split('-')
-            pair = (pairStr[0], pairStr[1])
-            pairRev = (pairStr[1], pairStr[0])
+            pair = (int(pairStr[0])-1, int(pairStr[1])-1)
+            pairRev = (int(pairStr[1])-1, int(pairStr[0])-1)
 
             # remove duplicate links
             if not (pairRev in links):
@@ -37,39 +40,57 @@ class fabric(Topo):
     def __init__(self, topoFile):
         Topo.__init__(self)
 
-        nodeNo, links = parseTopoFile(topoFile)
+        nodeNo, self.linkset = parseTopoFile(topoFile)
 
         hosts = [None] * nodeNo
         switches = [None] * nodeNo
 
         # add hosts and switches
         for idx in range(nodeNo):
-            print idx
-            hosts[idx] = self.addHost('h'+str(idx))
-            switches[idx] = self.addSwitch('s'+str(idx))
+            hosts[idx] = self.addHost('h'+str(idx+1))
+            switches[idx] = self.addSwitch('s'+str(idx+1))
 
             self.addLink(hosts[idx], switches[idx])  # connect a host to each
 
         # add links
-        for link in links:
+        print "nNode " + str(nodeNo)
+        for link in self.linkset:
             if (link[0] < nodeNo and link[1] < nodeNo):
-                self.addLink(hosts[idx], switches[idx])
+                print "link" + str(link)
+
+                self.addLink(switches[link[0]], switches[link[1]])
             else:
                 print "invalid link: " + str(link)
 
-""" Trigger test
-"""
+        # record switch info
+        # dpid, name, {next-hop: physical port}
+
+        self.switchInfo = [None] * nodeNo
+
+        for idx in range(nodeNo):
+            self.switchInfo[idx] = [idx+1, switches[idx], {}]
+
+        for link in self.linkset:
+            print "link: " + str((switches[link[0]], switches[link[1]]))
+            sPort, dPort = self.port(switches[link[0]], switches[link[1]])
+            print "ports: " + str((sPort, dPort))
+            self.switchInfo[link[0]][2][link[1]+1] = sPort
+            self.switchInfo[link[1]][2][link[0]+1] = dPort
+
+        print self.switchInfo
+
+
 def runTest():
     # generate topology
     topo = fabric(topoFile="../topology/test.topo")
 
-    #net = Mininet(topo=topo, controller=OVSController)
-    #net.start()
+    net = Mininet(topo=topo, controller=RemoteController("ryu"))
+    # net = Mininet(topo=topo, controller=OVSController)
+    net.start()
 
-    #print topo.nodeInfo('s1')
+    CLI(net)
 
-    #net.stop()
-
+    net.stop()
 
 if __name__ == "__main__":
     runTest()
