@@ -1,68 +1,123 @@
 
 """
 Query Format
-    ----
+    ----       ----     ----
     type (4) | len(4) | query (0-36)
-    ----
-    type = 0:
-            PacketIn Query Format
+    ----       ----     ----
+    type = 0: (PacketIn)
+            'query' Format
             ----        ----       ----        ----       ----
             dpid(4) | header(4) | header(4) | header(4) | header(4)
             ----        ----       ----        ----       ----
 
-    type = 1: Route Query Format
+    type = 1: (Route)
+            'query' Format
             ----
             NULL(0)
             ----
 
 Answer Format
-     ----       ----
-    type (4) | len(4) | answers (0-1000)
-     ----       ----
+     ----       ----     ----
+    type (4) | len(4) | answers (4-1000)
+     ----       ----     ----
     type = 0:
-            Rule Format:
-            dpid | table | rule_0.field[0].val |rule_0.field[0].mask |
-                       ----       ----       ----        ----
-    Higher bits ...   dpid(s) | ruletype | fieldLen | fieldType
-                       ----       ----       ----        ----
-            ----            ----         ----        ----
-            routeID(4) |   dpid(4)  |  dpid(4)  |   dpid(4)  |  ... | CNTL
-            ----            ----         ----        ----
+            'answers' format:
+            ----            ----          ----            ----
+           tableID  |  dpid/routeID (4) | field.val(4) |  field.mask(4) | next..
+            ----             ----          ----            ----
+
+    type = 1:
+            'answers' format:
+               ----       ----      ----
+            routeID(4) | dpid(4) | dpid(4)
+               ----       ----      ----
+    type = 2:
+            'answers' format:
+            None;
 """
 
-
 import socket
-import struct
-import logging
-logger = logging.getLogger("tcp")
+from struct import pack, unpack
+import struct.error as structErr
+import socket.error as sockErr
+# import logging
+# logger = logging.getLogger("tcp")
 
-class pkt_h:
-    def __init__(self,ip_src=0, ip_dst = 0, port_src = 0, port_dst = 0):
-        self.ip_src = ip_src
-        self.ip_dst = ip_dst
-        self.port_src = port_src
-        self.port_dst = port_dst
 
-class bktOrR(object):
-    def __init__(self, ip_src = 0, ip_src_mask = 0, ip_dst = 0, ip_dst_mask = 0, port_src = 0,
-                 port_src_mask = 0, port_dst = 0, port_dst_mask = 0, priority = 0):
-        self.ip_src = ip_src
-        self.ip_src_mask = ip_src_mask
-        self.ip_dst = ip_dst
-        self.ip_dst_mask = ip_dst_mask
-        self.port_src = port_src
-        self.port_src_mask = port_src_mask
-        self.port_dst = port_dst
-        self.port_dst_mask = port_dst_mask
-        self.priority = priority
+class query:
+    def __init__(self, typeID, dpid, headers):
+        self.typeID = typeID
+        self.dpid = dpid
+        self.headers = headers
 
-    def __str__(self):
-        return "%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t" % (self.ip_src, self.ip_src_mask, self.ip_dst, self.ip_dst_mask, self.port_src,
-                                                         self.port_src_mask, self.port_dst, self.port_dst_mask, self.priority)
+    def toMsg(self):
+        msg = None
+
+        if self.typeID == 0:
+            formatStr = '!II' + 'I' * len(self.headers)
+            msg = pack(formatStr, self.typeID, len(self.headers)*4,
+                       self.dpid, *self.headers)
+
+        elif self.typeID == 1:
+            formatStr = '!II'
+            msg = pack(self.formatStr, self.typeID, 0)
+
+        else:
+            pass
+
+        return msg
+
+
+class answer:
+    def __init__(self, rawInput, fieldNo):
+        self.typeID = None
+        self.rawInput = rawInput
+        self.fieldNo = 2 * fieldNo
+
+    def parseMsg(self):
+        result = None
+
+        typeID, length = unpack("!II", self.rawInput[0:4*2])
+
+        ruleLen = 8 + self.fieldNo * 8
+        ruleFormat = "!II" + 'I' * (self.fieldNo * 2)
+
+        if typeID == 0:
+            ruleNo = (length - 8) / ruleLen
+            assert (length - 8) % ruleLen == 0
+
+            result = [typeID]
+
+            for idx in range(ruleNo):
+                rule = unpack(ruleFormat,
+                              self.rawInput[(8 + idx * ruleLen):
+                                            (8 + (idx + 1) * ruleLen)])
+                result.append(rule)
+
+        elif typeID == 1:
+            dpidNo = (length - 8) / 4
+
+            assert (length - 8) % 4 == 0
+            result = [unpack('!I', self.rawInput[8:12])]
+
+            route = unpack('!'+'I'*dpidNo,
+                           self.rawInput[12: 12+4*dpidNo])
+
+            result.append(route)
+
+        elif typeID == 2:
+            result = [None]
+
+        else:
+            pass
+
+        return result
+
 
 def ipv4_to_str(integre):
     ip_list = [str((integre >> (24 - (n * 8)) & 255)) for n in range(4)]
     return '.'.join(ip_list)
+
 
 def ipv4_to_int(string):
     ip = string.split('.')
@@ -73,21 +128,26 @@ def ipv4_to_int(string):
         i = (i << 8) | b
     return i
 
+
 def eth_to_str(integer):
-    eth_list = [hex(integer >> (44 - (n * 8)) & 15)[2:] + hex(integer >> (40 - (n * 8)) & 15)[2:] for n in range(6)]
+    eth_list = [hex(integer >> (44 - (n * 8)) & 15)[2:] +
+                hex(integer >> (40 - (n * 8)) & 15)[2:] for n in range(6)]
     return ':'.join(eth_list)
 
+
 def eth_mask_to_str(integer):
-    eth_list = [hex(integer >> (44 - (n * 8)) & 15)[2:] + hex(integer >> (40 - (n * 8)) & 15)[2:] for n in range(6)]
+    eth_list = [hex(integer >> (44 - (n * 8)) & 15)[2:] +
+                hex(integer >> (40 - (n * 8)) & 15)[2:] for n in range(6)]
     mask_temp = ':'.join(eth_list)
     return 'ff:ff:'+mask_temp[6:]
+
 
 def eth_to_int(string):
     eth = string.split(':')
     assert len(eth) == 6
     i = 0
     for b in eth:
-        b = int(b,16)
+        b = int(b, 16)
         i = (i << 8) | b
     return i
 
@@ -115,11 +175,11 @@ class ryuClient:
             try:
                 self.skt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 self.skt.connect((self.server_ip, self.server_port))
-                logger.info("server connected : %s %s",
-                            self.server_ip,
-                            self.server_port)
-            except socket.error as e:
-                logger.debug("error connected %s,%s", e.errno, e.message)
+                # logger.info("server connected : %s %s",
+                #            self.server_ip,
+                #            self.server_port)
+            except sockErr:
+                # logger.debug("error connected %s,%s", e.errno, e.message)
                 self.handle_error()
 
     def handle_error(self):
@@ -129,49 +189,33 @@ class ryuClient:
             finally:
                 self.skt = None
 
-    def query(self, dpid, header):  # forward packetIn to BigMac
+    def packetIn(self, dpid, headers):  # forward packetIn to BigMac
         if self.skt is None:
             self.create_connection()
         if self.skt is None:
             return None
 
-        request = [dpid] + header
-
-        reqLen = 4*len(request)
-        reqFormat = '!I' + 'I'*len(request)
-
-        message = struct.pack(reqFormat, reqLen, *request)
+        queryObj = query(0, dpid, headers)
+        message = queryObj.toMsg()
+        rules = None
 
         try:
-            # send query
             self.skt.send(message)
 
-            # recv len
-            body_len_raw = self.skt.recv(self.header_size)
-            (body_len, ) = struct.unpack('!I', body_len_raw)
-            # recv body
-            body_raw = self.skt.recv(body_len)
+            bodyraw = self.skt.recv()
+            answerObj = answer(bodyraw, self.header_size)
+            rules = answerObj.parseMsg()
 
         except socket.error, (value, message):
-            logger.error("TCP ERROR:\t%s %s", value, message)
-            logger.info("TCP INFO:\ttry to re-connect " +
-                        self.server_ip + " : " + str(self.server_port))
+            # logger.error("TCP ERROR:\t%s %s", value, message)
+            # logger.info("TCP INFO:\ttry to re-connect " +
+            #            self.server_ip + " : " + str(self.server_port))
             self.handle_error()
             return None
 
-        except struct.error:
+        except structErr:
             self.handle_error()
             return None
-
-        rules_num = body_len/36
-        rules = []
-
-        for i in range(rules_num):
-            rules.append(bktOrR())
-            (rules[i].ip_src, rules[i].ip_src_mask, rules[i].ip_dst,
-             rules[i].ip_dst_mask, rules[i].port_src, rules[i].port_src_mask,
-             rules[i].port_dst, rules[i].port_dst_mask, rules[i].priority) = \
-                struct.unpack('!IIIIIIIII', body_raw[i*36:(i*36+36)])
 
         return rules
 
@@ -185,9 +229,9 @@ if __name__ == "__main__":
     dst_str = ipv4_to_str(dst)
     print "int : %s %s" % (src, dst)
     print "str : %s %s" % (src_str, dst_str)
-    request = pkt_h(src, dst, 4000, 8000)
+    request = query(0, 1, [src, dst, 4000, 8000])
 
-    cab = cab_client()
+    cab = ryuClient()
     cab.create_connection()
     rules = cab.query(request)
 
