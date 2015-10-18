@@ -54,13 +54,13 @@ class query:
         msg = None
 
         if self.typeID == 0:
-            formatStr = '!II' + 'I' * len(self.headers)
-            msg = pack(formatStr, self.typeID, len(self.headers)*4,
+            formatStr = '!III' + 'I' * len(self.headers)
+            msg = pack(formatStr, self.typeID, len(self.headers)*4+12,
                        self.dpid, *self.headers)
 
         elif self.typeID == 1:
             formatStr = '!II'
-            msg = pack(self.formatStr, self.typeID, 0)
+            msg = pack(self.formatStr, self.typeID, 8)
 
         else:
             pass
@@ -175,11 +175,8 @@ class ryuClient:
             try:
                 self.skt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 self.skt.connect((self.server_ip, self.server_port))
-                # logger.info("server connected : %s %s",
-                #            self.server_ip,
-                #            self.server_port)
+                self.skt.settimeout(10)
             except sockErr:
-                # logger.debug("error connected %s,%s", e.errno, e.message)
                 self.handle_error()
 
     def handle_error(self):
@@ -189,7 +186,52 @@ class ryuClient:
             finally:
                 self.skt = None
 
-    def packetIn(self, dpid, headers):  # forward packetIn to BigMac
+    def routeQuery(self):
+        if self.skt is None:
+            self.create_connection()
+        if self.skt is None:
+            return None
+
+        queryObj = query(1, None, None)
+        message = queryObj.toMsg()
+
+        routes = []
+        prevRouteID = 0
+
+        try:
+            self.skt.send(message)
+
+            while True:
+                bodyraw = self.skt.recv()
+
+                if bodyraw is None:
+                    print "No terminal recved, timed out"
+                    break
+
+                result = bodyraw.parseMsg()
+                if result == [None]:  # terminated
+                    break
+
+                for route in result:
+                    if (route[0] == prevRouteID + 1):
+                        routes.append(route[1])
+                    else:
+                        print "Missing one route"
+                        routes.append([])
+
+                    prevRouteID = prevRouteID + 1
+
+        except socket.error, (value, message):
+            self.handle_error()
+            return None
+
+        except structErr:
+            self.handle_error()
+            return None
+
+        return routes
+
+    def packetIn(self, dpid, headers):  # forward packetIn to BigMac, fetch rule
         if self.skt is None:
             self.create_connection()
         if self.skt is None:
@@ -207,9 +249,6 @@ class ryuClient:
             rules = answerObj.parseMsg()
 
         except socket.error, (value, message):
-            # logger.error("TCP ERROR:\t%s %s", value, message)
-            # logger.info("TCP INFO:\ttry to re-connect " +
-            #            self.server_ip + " : " + str(self.server_port))
             self.handle_error()
             return None
 
