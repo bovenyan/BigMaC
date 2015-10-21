@@ -10,8 +10,8 @@
 #include <set>
 #include <queue>
 #include <cassert>
-#include "sharedHeader.h"
-#include "mathTools.h"
+#include "../sharedHeader.h"
+#include "../mathTools.h"
 #include <sstream>
 
 using std::map;

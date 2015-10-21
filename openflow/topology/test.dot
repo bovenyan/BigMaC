@@ -1,0 +1,12 @@
+strict digraph {
+node [shape = record];
+h1 [label = "<1>"];
+h2 [label = "<1>"];
+h3 [label = "<1>"];
+h4 [label = "<1>"];
+s1 [label = "<1>|<2>|<3>"];
+s2 [label = "<1>|<2>"];
+s3 [label = "<1>|<2>|<3>"];
+s4 [label = "<1>|<2>"];
+"h1"
+}

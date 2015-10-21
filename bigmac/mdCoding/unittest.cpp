@@ -1,7 +1,7 @@
 #include <iostream>
 #include <boost/program_options.hpp>
 
-#include "sharedHeader.h"
+#include "../sharedHeader.h"
 #include "mdCoding.h"
 
 namespace po = boost::program_options;

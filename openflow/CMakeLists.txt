@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 2.8) 
 project(CAB_SDN)
+
 set(CMAKE_CXX_COMPILER /usr/bin/g++)
 set(CMAKE_CXX_FLAGS "-std=c++11 -g")
 
@@ -11,17 +12,14 @@ endif()
 
 add_definitions(-DBOOST_LOG_DYN_LINK)
 
-add_subdirectory(mdCoding)
-add_subdirectory(placement)
-# add_subdirectory(ruleGen)
-
-add_executable(bigmac run.cpp)
+set(MDcode mdCoding.cpp)
+add_library(mdcode ${MDcode})
+add_executable(mdTest mdTest.cpp)
 
 if(UNIX)
 	target_link_libraries(
-		bigmac
-        mdcode
-        place
+		mdTest
+		mdcode
 		${Boost_LIBRARIES}
 		pthread
 		)

@@ -2,7 +2,7 @@
 #define MD_CODING_H
 
 #include "mdEquation.h"
-#include "sharedHeader.h"
+#include "../sharedHeader.h"
 
 #include <vector>
 #include <random>
