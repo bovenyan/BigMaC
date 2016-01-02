@@ -3,7 +3,7 @@
 
 #include "sharedHeader.h"
 #include "./mdCoding/mdCoding.h"
-#include "./placement/routing.h"
+// #include "./placement/routing.h"
 
 namespace po = boost::program_options;
 
@@ -107,7 +107,7 @@ void placementOptions(po::options_description & desc, ParamType & param) {
     desc.add_options()
     ("topo", po::value<string>(&param.topofile)->default_value("./test.topo"), "Topology File");
 }
-
+/*
 void placementParsing(po::variables_map v_map, ParamType & param, logging_src::severity_logger< severity_level > & logger_main) {
     if (v_map.count("placement")) { 
         Topology topo(param.topofile);
@@ -115,7 +115,7 @@ void placementParsing(po::variables_map v_map, ParamType & param, logging_src::s
         topo.printAllShortestPath();
     }
 }
-
+*/
 int main(int argc, char * argv[]) {
     try {
         int log;
@@ -159,7 +159,7 @@ int main(int argc, char * argv[]) {
 
         // adding parser for each project
         mdCodingParsing(v_map, param, logger_main);
-        placementParsing(v_map, param, logger_main);
+        // placementParsing(v_map, param, logger_main);
 
         return 0;
     } catch (std::exception & e) {

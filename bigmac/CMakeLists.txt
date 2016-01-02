@@ -12,7 +12,7 @@ endif()
 add_definitions(-DBOOST_LOG_DYN_LINK)
 
 add_subdirectory(mdCoding)
-add_subdirectory(placement)
+# add_subdirectory(placement)
 # add_subdirectory(ruleGen)
 
 add_executable(bigmac run.cpp)
@@ -21,7 +21,7 @@ if(UNIX)
 	target_link_libraries(
 		bigmac
         mdcode
-        place
+        #place
 		${Boost_LIBRARIES}
 		pthread
 		)
