@@ -1,0 +1,26 @@
+set terminal pdf size 8,6 font "Times-Roman, 20" 
+set output "complexity_size.pdf"
+set lmargin at screen 0.18
+set rmargin at screen 0.96
+set xlabel "Rule set size" offset 0,0.6
+set ylabel "Computation time (sec)" offset 2.2,0
+set ytics offset 0.5,0
+set xtics 0, 500, 10000 offset 0, 0.3
+set xrange [0:5000]
+set yrange [0:0.7]
+plot "size_time_exp.dat" using 1:($2/4) notitle with linespoints lw 10 pt 13 ps 1 linecolor rgb "#6495ED"
+
+ 
+set output "bit_size.pdf"
+set xrange [0:5000]
+set yrange [0:20]
+set ylabel "Metadata Bits Used" offset 2.2,0
+plot "size_time_exp.dat" using 1:3 notitle with linespoints lw 10 pt 13 ps 1 linecolor rgb "#6495ED"
+
+set output "bit_casts.pdf"
+set xrange [0:6]
+set yrange [0:10]
+set xtics 0, 1, 6 offset 0, 0.3
+set ylabel "Metadata Bits Used" offset 2.2,0
+set xlabel "Average Casts" offset 0,0.6
+plot "cast_bit_exp.dat" using 1:2 notitle with linespoints lw 10 pt 13 ps 1 linecolor rgb "#6495ED"

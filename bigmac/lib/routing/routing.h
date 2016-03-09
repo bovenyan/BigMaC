@@ -27,6 +27,7 @@ private:
 
 public:
     Topology(string filename );
+    
     void allShortest();
     vector<int> calShortest(int src, int dst);
     void calShortestK(int K);

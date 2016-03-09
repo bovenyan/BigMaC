@@ -2,6 +2,7 @@
 #define BIG_SWITCH_H
 
 #include "bigMacRule.hpp"
+#include "routing.h"
 
 class bigSwitch {
 public:
@@ -18,6 +19,9 @@ public:
 
     // Routing
     void genRoute();  // TODO: Associate route to Topologys
+    
+    // Placement
+    
 
     // Verification
     void veriFlow();  // TODO verify the flow to bypass
