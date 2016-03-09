@@ -1,0 +1,13 @@
+set terminal pdf size 6,4 font "Times-Roman, 20"
+set output "latency.pdf"
+set yrange [0:20]
+set auto x
+unset xtics
+set ylabel "rule caching latency (ms)"
+set xtics nomirror rotate by -30 scale 0
+set style data histogram
+set style histogram rowstacked
+set style fill solid border -1
+set boxwidth 0.75
+set xtics ("10-random" 0 0, "100-random" 1 0, "100-transtub" 2 0, "20 fat-tree" 3 0, "45-fat-tree" 4 0, "80-fat-tree" 5 0)
+plot 'latency.dat' using ($2-$3) title 'flow caching' lc rgb "#6495ED", '' using 4 title 'rule mapping' lc rgb "#CD5C5C", '' using 3 title 'query transition delay' lc rgb "#3CB371"
