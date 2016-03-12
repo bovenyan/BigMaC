@@ -145,6 +145,15 @@ pair<int, int> pipe_line::get_matched_rules(const addr_5tup & packet) {
     return std::make_pair(i, j);
 }
 
+void pipe_line::clear_rule_stats() {
+    for (auto iter = fwd_table.begin(); iter != fwd_table.end(); ++iter){
+        iter->clear_stats();
+    }
+    for (auto iter = mgmt_table.begin(); iter != mgmt_table.end(); ++iter){
+        iter->clear_stats();
+    }
+}
+
 /*
  * debug and print
  */

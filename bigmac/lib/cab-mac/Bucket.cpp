@@ -14,9 +14,6 @@ namespace logging = boost::log;
 namespace src = boost::log::sources;
 namespace attrs = boost::log::attributes;
 
-typedef vector<uint32_t>::iterator Iter_id;
-typedef vector<bucket*>::iterator Iter_son;
-
 
 src::logger bucket::lg = src::logger();
 
@@ -27,9 +24,9 @@ void bucket::logger_init() {
 bucket::bucket():hit(false), parent(NULL), max_gain(0) {}
 
 bucket::bucket(const bucket & bk) : b_rule(bk) {
-    sonList = vector<bucket*>();
-    assoc_fwd_rules = vector<uint32_t>();
-    assoc_mgmt_rules = vector<uint32_t>();
+    son_list = vector<bucket*>();
+    assoc_fwd_rules = vector<size_t>();
+    assoc_mgmt_rules = vector<size_t>();
     hit = false;
     parent = NULL;
     max_gain = 0;
@@ -48,8 +45,8 @@ bucket::bucket(const string & b_str, const pipe_line * p_line) : b_rule(b_str) {
 }
 
 pair<double, size_t> bucket::split(const vector<size_t> & dim , pipe_line * p_line) {
-    if (!sonList.empty())
-        cleanson();
+    if (!son_list.empty())
+        delete_subtree();
 
     uint32_t new_masks[4];
     size_t total_son_no = 1;
@@ -66,7 +63,7 @@ pair<double, size_t> bucket::split(const vector<size_t> & dim , pipe_line * p_li
         }
     }
 
-    sonList.reserve(total_son_no);
+    son_list.reserve(total_son_no);
 
     size_t total_rule_no = 0;
     size_t largest_rule_no = 0;
@@ -85,13 +82,13 @@ pair<double, size_t> bucket::split(const vector<size_t> & dim , pipe_line * p_li
         }
 
         // Calculate assoc rules
-        for (Iter_id iter = assoc_fwd_rules.begin();
+        for (auto iter = assoc_fwd_rules.begin();
                 iter != assoc_fwd_rules.end(); ++iter) {
             if (son_ptr->match_rule(p_line->fwd_table[*iter]))
                 son_ptr->assoc_fwd_rules.push_back(*iter);
         }
 
-        for (Iter_id iter = assoc_mgmt_rules.begin();
+        for (auto iter = assoc_mgmt_rules.begin();
                 iter != assoc_mgmt_rules.end(); ++iter) {
             if (son_ptr->match_rule(p_line->mgmt_table[*iter]))
                 son_ptr->assoc_mgmt_rules.push_back(*iter);
@@ -101,9 +98,10 @@ pair<double, size_t> bucket::split(const vector<size_t> & dim , pipe_line * p_li
                          son_ptr->assoc_mgmt_rules.size();
 
         largest_rule_no = std::max(largest_rule_no,
-                                   son_ptr->assoc_fwd_rules.size() + son_ptr->assoc_mgmt_rules.size());
+                                   son_ptr->assoc_fwd_rules.size() +
+                                   son_ptr->assoc_mgmt_rules.size());
 
-        sonList.push_back(son_ptr);
+        son_list.push_back(son_ptr);
     }
 
     return std::make_pair(double(total_rule_no)/total_son_no, largest_rule_no);
@@ -112,8 +110,8 @@ pair<double, size_t> bucket::split(const vector<size_t> & dim , pipe_line * p_li
 
 int bucket::reSplit(const vector<size_t> & dim , pipe_line * p_line_ptr,
                     bool apply_or_not) {
-    if (!sonList.empty())
-        cleanson();
+    if (!son_list.empty())
+        delete_subtree();
 
     uint32_t new_masks[4];
     size_t total_son_no = 1;
@@ -130,7 +128,7 @@ int bucket::reSplit(const vector<size_t> & dim , pipe_line * p_line_ptr,
         }
     }
 
-    sonList.reserve(total_son_no);
+    son_list.reserve(total_son_no);
     set<size_t> to_cache_fwd_rules;
     set<size_t> to_cache_mgmt_rules;
     int gain = 0;
@@ -149,7 +147,7 @@ int bucket::reSplit(const vector<size_t> & dim , pipe_line * p_line_ptr,
         }
         
         // check whether the bucket needs to be cached
-        for (Iter_id iter = assoc_fwd_rules.begin();
+        for (auto iter = assoc_fwd_rules.begin();
                 iter != assoc_fwd_rules.end(); ++iter) { // rela rule
             if (son_ptr->match_rule(p_line_ptr->fwd_table[*iter])) {
                 son_ptr->assoc_fwd_rules.push_back(*iter);
@@ -160,7 +158,7 @@ int bucket::reSplit(const vector<size_t> & dim , pipe_line * p_line_ptr,
             }
         }
 
-        for (Iter_id iter = assoc_mgmt_rules.begin();
+        for (auto iter = assoc_mgmt_rules.begin();
                 iter != assoc_mgmt_rules.end(); ++iter) { // rela rule
             if (son_ptr->match_rule(p_line_ptr->mgmt_table[*iter])) {
                 son_ptr->assoc_mgmt_rules.push_back(*iter);
@@ -189,7 +187,7 @@ int bucket::reSplit(const vector<size_t> & dim , pipe_line * p_line_ptr,
                     p_line_ptr->mgmt_table[*iter].inc_occupancy();
             }
         }
-        sonList.push_back(son_ptr);
+        son_list.push_back(son_ptr);
     }
 
 
@@ -209,7 +207,7 @@ int bucket::reSplit(const vector<size_t> & dim , pipe_line * p_line_ptr,
     return gain;
 }
 
-
+/*
 vector<size_t> bucket::unq_comp(pipe_line * p_line_ptr) {
     vector<size_t> result;
     size_t sum = 0;
@@ -247,6 +245,20 @@ vector<size_t> bucket::unq_comp(pipe_line * p_line_ptr) {
 
     return outstand;
 }
+*/
+
+void bucket::delete_subtree() {
+    for (auto iter = son_list.begin(); iter != son_list.end(); ++iter)
+        delete (*iter);
+    son_list.clear();
+}
+
+void bucket::clear_subtree_hit() {
+    hit = false;
+    for (auto iter = son_list.begin(); iter != son_list.end(); ++iter) {
+        (*iter)->clear_subtree_hit();
+    }
+}
 
 string bucket::get_str() const {
     stringstream ss;
@@ -254,17 +266,3 @@ string bucket::get_str() const {
     ss << "\t associated mgmt rules" << assoc_mgmt_rules.size();
     return ss.str();
 }
-
-void bucket::clearHitFlag() {
-    hit = false;
-    for (auto iter = sonList.begin(); iter != sonList.end(); ++iter) {
-        (*iter)->clearHitFlag();
-    }
-}
-
-void bucket::cleanson() {
-    for (auto iter = sonList.begin(); iter != sonList.end(); ++iter)
-        delete (*iter);
-    sonList.clear();
-}
-

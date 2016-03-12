@@ -30,6 +30,7 @@ public:
             std::string & mgmt_table_file, 
             bool test_bed = false);
 
+    void clear_rule_stats();
     // debug
     void print(const std::string &);
 };
