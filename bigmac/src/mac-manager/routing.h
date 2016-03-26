@@ -29,6 +29,7 @@ private:
     logging_src::severity_logger< severity_level > logger_routing;
 
 public:
+    routing(){};
     // read a routing file
     routing(string filename);
     

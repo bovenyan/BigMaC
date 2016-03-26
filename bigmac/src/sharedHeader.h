@@ -11,6 +11,7 @@
 #include <boost/log/utility/setup/common_attributes.hpp>
 #include <boost/log/support/date_time.hpp>
 
+
 namespace logging = boost::log;
 namespace logging_src = boost::log::sources;
 namespace logging_sinks = boost::log::sinks;

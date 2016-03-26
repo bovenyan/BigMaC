@@ -1,5 +1,6 @@
 #include "routing.h"
 #include <fstream>
+#include <boost/algorithm/string.hpp>
 
 using std::ifstream;
 using std::ofstream;
@@ -7,6 +8,8 @@ using std::string;
 using std::stringstream;
 using std::pair;
 using std::rand;
+using boost::split;
+using boost::is_any_of;
 
 routing::routing(string filename) {
     ifstream file(filename);
@@ -240,7 +243,8 @@ void routing::load_paths(string filename){
     string line;
     
     while (getline(rec_file, line)){
-        vector<string> comp = line.split(" ");
+        vector<string> comp;
+        split(line, comp, is_any_of(" "));
         vector<int> path;
         for (string ele : comp){
             path.push_back(std::atoi(ele.c_str()));
@@ -249,6 +253,6 @@ void routing::load_paths(string filename){
     }
 }
 
-vector<int> get_rule_path(int rule_id){
+vector<int> routing::get_rule_path(int rule_id){
     return rule_routing_map[rule_id];
 } 

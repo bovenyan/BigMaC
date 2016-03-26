@@ -4,6 +4,8 @@
 #include "stdafx.h"
 #include "EpochTime.hpp"
 #include <boost/functional/hash.hpp>
+using std::vector;
+
 class range_addr;
 
 class addr_5tup {
@@ -76,6 +78,7 @@ public:
     inline bool hit (const uint32_t &) const;
     inline void getTighter(const uint32_t &, const range_addr &);  // Mar 14
     inline pref_addr approx(bool is_port) const; // May 02
+    inline friend std::vector<range_addr> minus_range(const range_addr &, const range_addr &); // Dec 14
     inline friend std::vector<range_addr> minus_rav(std::vector<range_addr> &, std::vector<range_addr> &);
 
     inline uint32_t get_extreme(bool) const;
@@ -345,7 +348,7 @@ inline void pref_addr::mutate(uint32_t s_shrink, uint32_t s_expand, bool port) {
             s_expand = 1;
         uint32_t mdig = rand() % (s_expand+1);
         for (uint32_t i = 0; i < mdig; ++i) {
-            if ((mask == 0 && !port) || (mask == ((~0) << 16) && port))
+            if ((mask == 0 && !port) || (mask == ((~unsigned(0)) << 16) && port))
                 break;
             mask = mask << mdig;
         }
@@ -521,8 +524,7 @@ inline pref_addr range_addr::approx(bool is_port = true) const {
     int mid = range[1] - range[1] % app_len;
     if ( mid + app_len - 1 <= range[1] ) {
         p_addr.pref = mid;
-    }
-    else {
+    } else {
         if (mid - app_len >= range[0])
             p_addr.pref = mid - app_len;
         else {
@@ -541,7 +543,7 @@ inline pref_addr range_addr::approx(bool is_port = true) const {
     }
 
     if (is_port) // port only has the last 16 bits.
-        p_addr.mask = p_addr.mask | ((~0)<<16);
+        p_addr.mask = p_addr.mask | ((~unsigned(0))<<16);
     p_addr.pref = p_addr.pref & p_addr.mask;
     return p_addr;
 }
@@ -573,6 +575,26 @@ inline vector<range_addr> minus_rav(vector<range_addr> & lhs, vector<range_addr>
         iter_l++;
     }
     return res;
+}
+
+inline vector<range_addr> minus_range(const range_addr & lhs, const range_addr & rhs) {
+    if (rhs.range[0] <= lhs.range[0]) {
+        if (rhs.range[1] < lhs.range[0])
+            return vector<range_addr>(1,lhs);
+        if (rhs.range[1] < lhs.range[1])
+            return vector<range_addr>(1, range_addr(rhs.range[1]+1, lhs.range[1]));
+        return vector<range_addr>();
+    }
+    if (rhs.range[0] <= lhs.range[1]) {
+        if (rhs.range[1] >= lhs.range[1])
+            return vector<range_addr>(1, range_addr(lhs.range[0], rhs.range[0] - 1));
+
+        vector<range_addr> result;
+        result.push_back(range_addr(lhs.range[0], rhs.range[0]-1));
+        result.push_back(range_addr(rhs.range[1]+1, lhs.range[1]));
+        return result;
+    }
+    return vector<range_addr>(1,lhs);
 }
 
 inline uint32_t range_addr::get_extreme(bool hi) const { // get the higher or lower range of the addr
