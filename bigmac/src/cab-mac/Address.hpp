@@ -1,6 +1,8 @@
 #ifndef ADDRESS_H
 #define ADDRESS_H
 
+#include "stdafx.h"
+#include "EpochTime.hpp"
 #include <boost/functional/hash.hpp>
 class range_addr;
 

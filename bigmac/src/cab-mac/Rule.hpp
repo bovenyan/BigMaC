@@ -8,14 +8,14 @@
 class b_rule;
 
 class p_rule {
-  public:
+public:
     pref_addr hostpair[2];
     range_addr portpair[2];
     bool proto;
     bool hit;
     int weight;
 
-  public:
+public:
     inline p_rule();
     inline p_rule(const p_rule &);
     inline p_rule(const std::string &, bool = false);
@@ -34,11 +34,11 @@ class p_rule {
 };
 
 class b_rule {
-  public:
+public:
     pref_addr addrs[4];
     bool proto;
 
-  public:
+public:
     inline b_rule();
     inline b_rule(const b_rule &);
     inline b_rule(const std::string &);
@@ -55,18 +55,18 @@ class b_rule {
 };
 
 class r_rule {
-  public:
+public:
     range_addr addrs[4];
     bool proto;
 
-  public:
+public:
     inline r_rule();
     inline r_rule(const r_rule &);
     inline r_rule(const p_rule &);
 
     inline bool operator==(const r_rule &) const;
     inline friend uint32_t hash_value(r_rule const &);
-    inline vector<r_rule> minus(const r_rule &);  // Dec. 15  TODO to validate 
+    inline vector<r_rule> minus(const r_rule &);  // Dec. 15  TODO to validate
 
     inline bool overlap(const r_rule &) const;
     inline void prune_mic_rule(const r_rule &, const addr_5tup &); // Mar 14
@@ -78,18 +78,22 @@ class r_rule {
 };
 
 class h_rule: public b_rule {
-  private:
+private:
 
-  public:
-    std::vector<p_rule> rela_rule;
+public:
+    std::vector<p_rule> assoc_fwd_rule;
+    std::vector<p_rule> assoc_mgmt_rule;
 
     inline h_rule(const h_rule &);
     inline h_rule(const std::string &);
-    inline h_rule(const std::string &, const std::vector<p_rule> &);
+
+    inline h_rule(const std::string & str, const std::vector<p_rule> & fwd_rules,
+                  const std::vector<p_rule> & mgmt_rules);
     inline h_rule(const addr_5tup&, uint32_t (&)[4]);
 
-    inline uint32_t cal_rela(const std::vector<p_rule> &);
-    inline addr_5tup gen_header();
+    inline std::pair<size_t, size_t> cal_assoc(const std::vector<p_rule> & fwd_rules,
+            const std::vector<p_rule> & mgmt_rules);
+    // inline addr_5tup gen_header();
 };
 
 using std::pair;
@@ -380,7 +384,7 @@ inline bool r_rule::operator==(const r_rule & rhs) const {
     return true;
 }
 
-inline uint32_t hash_value(r_rule const & rr) { // hash the detailed range value for the value;
+inline uint32_t hash_value(r_rule const & rr) { 
     size_t seed = 0;
     for (uint32_t i = 0; i < 4; ++i) {
         boost::hash_combine(seed, hash_value(rr.addrs[i]));
@@ -388,20 +392,20 @@ inline uint32_t hash_value(r_rule const & rr) { // hash the detailed range value
     return seed;
 }
 
-inline vector<r_rule> r_rule::minus(const r_rule & mRule){
+inline vector<r_rule> r_rule::minus(const r_rule & mRule) {
     vector<r_rule> result;
 
     vector<vector<range_addr> > field_div;
-    
-    for (int i = 0; i < 4; ++i){
+
+    for (int i = 0; i < 4; ++i) {
         field_div.push_back(minus_range(addrs[i], mRule.addrs[i]));
     }
 
-    for (int i = 0; i < 4; ++i){
-        for (range_addr radd : field_div[i]){
+    for (int i = 0; i < 4; ++i) {
+        for (range_addr radd : field_div[i]) {
             r_rule res = mRule;
             res.addrs[i] = radd;
-            for (int j = i+1; j < 4; ++j){
+            for (int j = i+1; j < 4; ++j) {
                 res.addrs[j] = addrs[j];
             }
             result.push_back(res);
@@ -438,18 +442,17 @@ inline b_rule r_rule::cast_to_bRule() const {
     return br;
 }
 
-inline bool range_minus(vector<r_rule> & toMinusRules, const r_rule & mRule){
+inline bool range_minus(vector<r_rule> & toMinusRules, const r_rule & mRule) {
     bool overlap = false;
-    for (auto iter = toMinusRules.begin(); iter != toMinusRules.end(); ){
-        if (iter->overlap(mRule)){
+    for (auto iter = toMinusRules.begin(); iter != toMinusRules.end(); ) {
+        if (iter->overlap(mRule)) {
             auto result = iter->minus(mRule);
             iter = toMinusRules.erase(iter);
             for (auto & mR : result)
                 iter = toMinusRules.insert(iter, mR);
             iter += result.size();
             overlap = true;
-        }
-        else{
+        } else {
             ++iter;
         }
     }
@@ -474,15 +477,17 @@ inline string r_rule::get_str() const {
 inline h_rule::h_rule(const string & line):b_rule(line) {};
 
 inline h_rule::h_rule(const h_rule & hr):b_rule(hr) {
-    rela_rule = hr.rela_rule;
+    assoc_fwd_rule = hr.assoc_fwd_rule;
+    assoc_mgmt_rule = hr.assoc_mgmt_rule;
 }
 
-inline h_rule::h_rule(const string & str, const vector<p_rule> & rL):b_rule(str) {
-    cal_rela(rL);
+inline h_rule::h_rule(const string & str, const vector<p_rule> & fwd_rules,
+                      const vector<p_rule> & mgmt_rules):b_rule(str) {
+    cal_assoc(fwd_rules, mgmt_rules);
 }
 
 inline h_rule::h_rule(const addr_5tup & center, uint32_t (& scope)[4]) {
-    for (uint32_t i = 0; i < 2; i++) {
+    for (uint32_t i = 0; i < 2; i++) { // ip
         if (scope[i] < 32) {
             addrs[i].pref = (center.addrs[i] & ((~0)<<scope[i]));
             addrs[i].mask = ((~0)<<scope[i]);
@@ -491,7 +496,7 @@ inline h_rule::h_rule(const addr_5tup & center, uint32_t (& scope)[4]) {
             addrs[i].mask = 0;
         }
     }
-    for (uint32_t i = 2; i < 4; i++) {
+    for (uint32_t i = 2; i < 4; i++) { // port
         if (scope[i] < 16) {
             addrs[i].pref = (center.addrs[i] & ((~0)<<scope[i]));
             addrs[i].mask = ((~unsigned(0))<<scope[i]);
@@ -502,24 +507,31 @@ inline h_rule::h_rule(const addr_5tup & center, uint32_t (& scope)[4]) {
     }
 }
 
-inline uint32_t h_rule::cal_rela(const vector<p_rule> & rList) {
-    for (uint32_t i = 0; i < rList.size(); i++) {
-        p_rule rule = rList[i]; // copy
-        if(match_truncate(rule)) {
-            rela_rule.push_back(rule);
-        }
+inline pair<size_t, size_t> h_rule::cal_assoc(const vector<p_rule> & fwd_rules,
+        const vector<p_rule> & mgmt_rules) {
+    for (size_t i = 0; i < fwd_rules.size(); ++i) {
+        p_rule rule = fwd_rules[i]; // copy
+
+        if (match_truncate(rule))
+            assoc_fwd_rule.push_back(rule);
     }
-    return rela_rule.size();
+
+    for (size_t i = 0; i < mgmt_rules.size(); ++i) {
+        p_rule rule = mgmt_rules[i];
+
+        if (match_truncate(rule))
+            assoc_mgmt_rule.push_back(rule);
+    }
+
+    return std::make_pair(assoc_fwd_rule.size(),
+                          assoc_mgmt_rule.size());
 }
 
-inline addr_5tup h_rule::gen_header() {
+/*inline addr_5tup h_rule::gen_header() {
     vector<p_rule>::iterator iter = rela_rule.begin();
     advance(iter, rand()%rela_rule.size());
     return iter->get_random();
-}
+}*/
 
 #endif
-
-
-
 

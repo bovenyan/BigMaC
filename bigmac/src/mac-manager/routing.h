@@ -20,8 +20,8 @@ class routing {
 private:
     Graph topo;
     // routing record
-    vector<vector<vertex_descriptor> > shortestParents;
-    vector<vector<vector<vector<int> > > > shortestKPaths;
+    vector<vector<vertex_descriptor> > shortest_parents;
+    vector<vector<vector<vector<int> > > > shortest_k_paths;
 
     // rule-routing record
     vector<vector<int> > rule_routing_map;
@@ -39,10 +39,10 @@ public:
     vector<int> get_e2e_shortest(int src, int dst);
 
     // assign rule-path
-    void assign_paths_even(int rule_no);
-    void assign_paths_rand(int rule_no);
+    void assign_paths_rand(int rule_no, int k, string filename);
+    void load_paths(string filename);
 
-    inline vector<int>& get_rule_path(int rule_id);
+    vector<int> get_rule_path(int rule_id);
 
     // debug
     void print_e2e_shortest(int src, int dst);

@@ -2,9 +2,11 @@
 #include <fstream>
 
 using std::ifstream;
+using std::ofstream;
 using std::string;
 using std::stringstream;
 using std::pair;
+using std::rand;
 
 routing::routing(string filename) {
     ifstream file(filename);
@@ -27,9 +29,9 @@ routing::routing(string filename) {
             }
 
             for (int i = 0; i < vertexNo; ++i) {
-                shortestParents.push_back(parent);
+                shortest_parents.push_back(parent);
 
-                shortestKPaths = vector<vector<vector<vector<int> > > > (vertexNo,
+                shortest_k_paths = vector<vector<vector<vector<int> > > > (vertexNo,
                                  vector<vector<vector<int> > > (vertexNo,
                                          vector<vector<int> >()
                                                                )
@@ -53,7 +55,7 @@ routing::routing(string filename) {
 
 void routing::cal_all_shortest() {
     for (int i = 0; i < num_vertices(topo); ++i) {
-        dijkstra_shortest_paths(topo, i, predecessor_map(&shortestParents[i][0]));
+        dijkstra_shortest_paths(topo, i, predecessor_map(&shortest_parents[i][0]));
     }
 }
 
@@ -162,7 +164,7 @@ void routing::cal_all_shortest_k(int K) {
                 shortestKcandi.erase(shortestKcandi.begin()+minIdx);
             }
             
-            shortestKPaths[src][dst] = shortestKpair;
+            shortest_k_paths[src][dst] = shortestKpair;
         }
     }
 }
@@ -172,8 +174,7 @@ vector<int> routing::get_e2e_shortest(int src, int dst) {
 
     int v = src;
 
-    const vector<vertex_descriptor> & parent = shortestParents[dst];
-
+    const vector<vertex_descriptor> & parent = shortest_parents[dst];
 
     do {
         // BOOST_LOG_SEV(logger_routing, debug) << "srcNode: " << v;
@@ -207,10 +208,47 @@ void routing::print_all_shortest() {
     }
 }
 
-void routing::assign_paths_even(int rule_no){
-    rule_routing_map = vector<vector<int> >(rule_no, vector<int>()); 
+void routing::assign_paths_rand(int rule_no, int k, string filename) {
+    cal_all_shortest_k(k);
 
-    // rule no > candidate route no. 
+    ofstream rec_file (filename);
+    rule_routing_map = vector<vector<int> >(rule_no, vector<int>());
+
+    for (int i = 0; i < rule_no; ++i) {
+        int src = rand() % shortest_k_paths.size();
+        int dst = rand() % shortest_k_paths[src].size();
+
+        int path_id = rand() % shortest_k_paths[src][dst].size();
+        
+        rule_routing_map[i] = shortest_k_paths[src][dst][path_id];
+        
+        stringstream ss;
+
+        for (int node : rule_routing_map[i]){
+            ss << node << " ";
+        }
+
+        rec_file << ss.str() + "\n";
+    }
+
+    rec_file.close();
+} 
+
+void routing::load_paths(string filename){
+    ifstream rec_file (filename);
     
-    //
+    string line;
+    
+    while (getline(rec_file, line)){
+        vector<string> comp = line.split(" ");
+        vector<int> path;
+        for (string ele : comp){
+            path.push_back(std::atoi(ele.c_str()));
+        }
+        rule_routing_map.push_back(path);
+    }
 }
+
+vector<int> get_rule_path(int rule_id){
+    return rule_routing_map[rule_id];
+} 

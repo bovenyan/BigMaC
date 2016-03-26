@@ -80,7 +80,7 @@ private:
 
 public:
     tracer();
-    tracer(pipe_line *);
+    tracer(pipe_line * p_line_ptr);
 
     /* parameter settings
      * 1. set_para (string para_file): setting the trace generation parameter using a parameter file
@@ -92,15 +92,22 @@ public:
     void print_setup() const;
 
     /* toolkit
-     * 1. trace_get_ts(string trace_ts_file): get the timestamp of the first packet of the traces and record as "path \t ts"
+     * 1. trace_get_ts(string trace_ts_file): get the timestamp of the first 
+     *    packet of the traces and record as "path \t ts"
      * 2. uint32_t count_proc(): counts the no. of processors in this machine
-     * 3. merge_files(string gen_trace_dir): merge the file with format "/ptrace-" and put them into the "gen_trace_dir"
+     * 3. merge_files(string gen_trace_dir): merge the file with format 
+     *    "/ptrace-" and put them into the "gen_trace_dir"
      * 4. hotspot_prob: probing the hotspot
-     * 5. hotspot_prob_b: probing the hotspot with a reference file. bool specify whether to mutate the hot area
-     * 6. vector<b_rule> gen_seed_hotspot(size_t prepair_no, size_t max_rule): generate seed hotspot for evolving
-     * 7. vector<b_rule> evolve_patter(const vector<b_rule> & seed): evolve the seed and generate new hotspots
-     * 8. raw_snapshot(...): this takes a snapshot (file, start_time, interval, sample_time, whether_do_rule_check)
-     * 9.raw_hp_similarity(...): this calculates the host-pair similarity among different periods.
+     * 5. hotspot_prob_b: probing the hotspot with a reference file.
+     *    bool specify whether to mutate the hot area
+     * 6. vector<b_rule> gen_seed_hotspot(size_t prepair_no, size_t max_rule):
+     *    generate seed hotspot for evolving
+     * 7. vector<b_rule> evolve_patter(const vector<b_rule> & seed): evolve 
+     *    the seed and generate new hotspots
+     * 8. raw_snapshot(...): this takes a snapshot (file, start_time, interval,
+     *    sample_time, whether_do_rule_check)
+     * 9.raw_hp_similarity(...): this calculates the host-pair similarity among
+     *    different periods.
      */
     void trace_get_ts(string);
     friend uint32_t count_proc();
