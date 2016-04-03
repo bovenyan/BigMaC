@@ -10,6 +10,7 @@ class pipe_line {
 private:
     boost::log::sources::logger lg;
     bool test_bed; // testbed would use all prefix rules
+
     std::unordered_map <uint32_t, std::vector<uint32_t> > fwd_dep_map;
     std::unordered_map <uint32_t, std::vector<uint32_t> > mgmt_dep_map;
     
