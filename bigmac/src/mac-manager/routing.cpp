@@ -15,27 +15,28 @@ routing::routing(string filename) {
     ifstream file(filename);
 
     string line;
+    int vertex_no = 0;
 
     while (getline(file, line)) {
-        // node no
+        // vertex
         if (line.find("node:") != line.npos) {
             size_t lptr = line.find_first_of(":");
 
-            int vertexNo = std::atoi(line.substr(lptr + 1).c_str());
+            vertex_no = std::atoi(line.substr(lptr + 1).c_str());
 
-            topo = Graph(vertexNo);
+            topo = Graph(vertex_no);
 
-            vector<vertex_descriptor> parent(vertexNo);
+            vector<vertex_descriptor> parent(vertex_no);
 
-            for (size_type p = 0; p < vertexNo; ++p) {
+            for (size_type p = 0; p < vertex_no; ++p) {
                 parent[p] = p;
             }
 
-            for (int i = 0; i < vertexNo; ++i) {
+            for (int i = 0; i < vertex_no; ++i) {
                 shortest_parents.push_back(parent);
 
-                shortest_k_paths = vector<vector<vector<vector<int> > > > (vertexNo,
-                                 vector<vector<vector<int> > > (vertexNo,
+                shortest_k_paths = vector<vector<vector<vector<int> > > > (vertex_no,
+                                 vector<vector<vector<int> > > (vertex_no,
                                          vector<vector<int> >()
                                                                )
                                                                         );
@@ -54,6 +55,8 @@ routing::routing(string filename) {
             add_edge(srcDes, dstDes, edge_weight, topo);
         }
     }
+
+    table_usage = vector<int>(vertex_no, 0);
 }
 
 void routing::cal_all_shortest() {

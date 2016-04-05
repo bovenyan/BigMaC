@@ -5,6 +5,7 @@
 #include <boost/graph/dijkstra_shortest_paths.hpp>
 #include <boost/graph/adjacency_list.hpp>
 #include <vector>
+#include "BigRule.hpp"
 
 using namespace boost;
 using std::string;
@@ -27,12 +28,15 @@ private:
     vector<vector<int> > rule_routing_map;
 
     logging_src::severity_logger< severity_level > logger_routing;
-
+    
 public:
     routing(){};
     // read a routing file
     routing(string filename);
     
+    // usage entity
+    vector<int> table_usage;
+
     // cal culate path
     void cal_all_shortest();
     vector<int> cal_e2e_shortest(int src, int dst);

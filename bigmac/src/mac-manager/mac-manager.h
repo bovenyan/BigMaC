@@ -42,6 +42,7 @@ public:
     void cache_on_request(addr_5tup packet, vector<int> & path, bucket * & buck,
                           vector<int> & fwd_rule_ids, vector<int> & mgmt_rule_ids);
 
+    void get_usage();
 };
 
 #endif

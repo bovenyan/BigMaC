@@ -23,6 +23,7 @@ pipe_line::pipe_line(string & fwd_table_file,
         fwd_table.push_back(sRule);
         getline(file, sLine);
     }
+
     file.close();
 
     if (test_bed) {
