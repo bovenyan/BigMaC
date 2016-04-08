@@ -106,18 +106,23 @@ void mac_manager::parse_config(string config_file_name) {
 
 }
 
-void mac_manager::cache_on_request(addr_5tup packet, vector<int> & path, bucket * & buck,
-                                   vector<int> & fwd_rule_ids, vector<int> & mgmt_rule_ids) {
+void mac_manager::cache_on_request(addr_5tup packet, vector<int> & path,
+                                   bucket * & buck, vector<int> & fwd_rule_ids,
+                                   vector<int> & mgmt_rule_ids) {
+    auto res = b_tree.search_bucket(packet, b_tree.root);
+    buck = res.first;
 
 }
 
 void mac_manager::place_prealloc(vector<pair<int, int> > & fwd_rule_plc,
                                  vector<pair<int, int> > & mgmt_rule_plc) {
-    // calculate all the route for all the fwding placement
-    
-     
-    // calculate the "path cover problem" for all the mgmt placement 
+    // calculate all the routes for all the fwding placement
+    vector<unordered_set<int> > (network.get_topo_size(),
+                                 unordered_set<int>());
+
+
+    // calculate the "path cover problem" for all the mgmt placement
     // TODO: the pre-alloc mgmt rules
     // TODO: the assoc paths (rule)...
-    // TODO: the path cover 
+    // TODO: the path cover
 }

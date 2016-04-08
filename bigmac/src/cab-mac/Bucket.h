@@ -27,7 +27,9 @@ public:
     bucket(const bucket & bk);
     bucket(const string & bk_str, const pipe_line * pLine);
 
-    inline int get_assoc_no(){ return assoc_fwd_rules.size() + assoc_mgmt_rules.size(); }
+    inline int get_assoc_no(){
+        return assoc_fwd_rules.size() + assoc_mgmt_rules.size();
+    }
 
     /* static split
      * dimension: split on certain fields

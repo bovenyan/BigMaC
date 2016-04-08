@@ -15,7 +15,7 @@ private:
     std::unordered_map <uint32_t, std::vector<uint32_t> > fwd_dep_map;
     std::unordered_map <uint32_t, std::vector<uint32_t> > mgmt_dep_map;
 
-    std::vector<unordered_set<int> > fwd_mgmt_assoc_map;
+    std::vector<std::unordered_set<int> > mgmt_fwd_assoc_map;
 
     void obtain_dep(); // obtain the dependency between rules
     void obtain_assoc(); // obtain the association between fwd and mgmt 

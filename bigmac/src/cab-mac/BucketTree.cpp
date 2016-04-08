@@ -43,8 +43,9 @@ bucket_tree::~bucket_tree() {
     del_subtree(root);
 }
 
-pair<bucket *, pair<size_t, size_t> > bucket_tree::search_bucket(const addr_5tup& packet,
-        bucket * buck_ptr) const {
+pair<bucket *, pair<size_t, size_t> > bucket_tree::search_bucket(
+    const addr_5tup& packet,
+    bucket * buck_ptr) const {
 
     if (!buck_ptr->son_list.empty()) {
         size_t idx = 0;
@@ -94,9 +95,11 @@ pair<bucket *, pair<size_t, size_t> > bucket_tree::search_bucket(const addr_5tup
     }
 }
 
-bucket * bucket_tree::search_bucket_linear(const addr_5tup& packet, bucket * buck) const {
+bucket * bucket_tree::search_bucket_linear(const addr_5tup& packet,
+        bucket * buck) const {
     if (!buck->son_list.empty()) {
-        for (auto iter = buck->son_list.begin(); iter != buck->son_list.end(); ++iter)
+        for (auto iter = buck->son_list.begin();
+                iter != buck->son_list.end(); ++iter)
             if ((*iter)->packet_hit(packet))
                 return search_bucket_linear(packet, *iter);
         return NULL;
@@ -815,9 +818,9 @@ void bucket_tree::static_traf_test(const string & file_str) {
     }
 
     BOOST_LOG(bTree_log)<< "Unused rules: " << ss.str()
-        << "Cached: " << cached_rules.first.size() << " fwding rules ,"
-        << cached_rules.second.size() << "mgmt rules (" << unused_count << ") "
-        << buck_count << " buckets " << endl;
+                        << "Cached: " << cached_rules.first.size() << " fwding rules ,"
+                        << cached_rules.second.size() << "mgmt rules (" << unused_count << ") "
+                        << buck_count << " buckets " << endl;
 
 }
 
@@ -847,13 +850,13 @@ void bucket_tree::evolving_traf_test_dyn(const vector<b_rule> & prev,
         }
 
         size_t unused_count = 0;
-        for (auto iter = cached_rules.first.begin(); 
+        for (auto iter = cached_rules.first.begin();
                 iter != cached_rules.first.end(); ++iter) {
             if (!p_line_ptr->fwd_table[*iter].hit) {
                 ++unused_count;
             }
         }
-        for (auto iter = cached_rules.second.begin(); 
+        for (auto iter = cached_rules.second.begin();
                 iter != cached_rules.second.end(); ++iter) {
             if (!p_line_ptr->mgmt_table[*iter].hit) {
                 ++unused_count;
@@ -861,8 +864,8 @@ void bucket_tree::evolving_traf_test_dyn(const vector<b_rule> & prev,
         }
 
         BOOST_LOG(bTree_log) << "Dyn Cached: " << cached_rules.first.size()
-            << " fwding rules , " << cached_rules.second.size() << " mgmt rules ("
-            << unused_count << " unused) " << buck_count << " buckets ";
+                             << " fwding rules , " << cached_rules.second.size() << " mgmt rules ("
+                             << unused_count << " unused) " << buck_count << " buckets ";
 
         rec_file << cached_rules.first.size() << "\t";
         rec_file << cached_rules.second.size() << "\t" << buck_count << "\t";
@@ -918,8 +921,8 @@ void bucket_tree::evolving_traf_test_stat(const vector<b_rule> & prev, const vec
         rec_file << "\t" << buck_count << "\t";
         rec_file << cached_rules.first.size() + cached_rules.second.size() + buck_count<<endl;
         BOOST_LOG(bTree_log) << "Stat Cached: " << cached_rules.first.size()
-            << " fwding rules, " << cached_rules.second.size() << " mgmt rules ("
-            << unused_count << " unused) " << buck_count << " buckets ";
+                             << " fwding rules, " << cached_rules.second.size() << " mgmt rules ("
+                             << unused_count << " unused) " << buck_count << " buckets ";
 
         current[counter] = after[counter]; // evolve traffic
         root->clear_subtree_hit();

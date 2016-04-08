@@ -20,6 +20,7 @@ class routing {
 
 private:
     Graph topo;
+    int vertex_no = 0;
     // routing record
     vector<vector<vertex_descriptor> > shortest_parents;
     vector<vector<vector<vector<int> > > > shortest_k_paths;
@@ -30,10 +31,11 @@ private:
     logging_src::severity_logger< severity_level > logger_routing;
     
 public:
+    // constructor reads a routing file
     routing(){};
-    // read a routing file
     routing(string filename);
-    
+    int get_topo_size(){return vertex_no;}
+
     // usage entity
     vector<int> table_usage;
 

@@ -15,7 +15,7 @@ routing::routing(string filename) {
     ifstream file(filename);
 
     string line;
-    int vertex_no = 0;
+    vertex_no = 0;
 
     while (getline(file, line)) {
         // vertex
@@ -36,10 +36,10 @@ routing::routing(string filename) {
                 shortest_parents.push_back(parent);
 
                 shortest_k_paths = vector<vector<vector<vector<int> > > > (vertex_no,
-                                 vector<vector<vector<int> > > (vertex_no,
-                                         vector<vector<int> >()
-                                                               )
-                                                                        );
+                                   vector<vector<vector<int> > > (vertex_no,
+                                           vector<vector<int> >()
+                                                                 )
+                                                                          );
             }
         }
 
@@ -169,7 +169,7 @@ void routing::cal_all_shortest_k(int K) {
 
                 shortestKcandi.erase(shortestKcandi.begin()+minIdx);
             }
-            
+
             shortest_k_paths[src][dst] = shortestKpair;
         }
     }
@@ -225,12 +225,12 @@ void routing::assign_paths_rand(int rule_no, int k, string filename) {
         int dst = rand() % shortest_k_paths[src].size();
 
         int path_id = rand() % shortest_k_paths[src][dst].size();
-        
+
         rule_routing_map[i] = shortest_k_paths[src][dst][path_id];
-        
+
         stringstream ss;
 
-        for (int node : rule_routing_map[i]){
+        for (int node : rule_routing_map[i]) {
             ss << node << " ";
         }
 
@@ -238,24 +238,24 @@ void routing::assign_paths_rand(int rule_no, int k, string filename) {
     }
 
     rec_file.close();
-} 
+}
 
-void routing::load_paths(string filename){
+void routing::load_paths(string filename) {
     ifstream rec_file (filename);
-    
+
     string line;
-    
-    while (getline(rec_file, line)){
+
+    while (getline(rec_file, line)) {
         vector<string> comp;
         split(line, comp, is_any_of(" "));
         vector<int> path;
-        for (string ele : comp){
+        for (string ele : comp) {
             path.push_back(std::atoi(ele.c_str()));
         }
         rule_routing_map.push_back(path);
     }
 }
 
-vector<int> routing::get_rule_path(int rule_id){
+vector<int> routing::get_rule_path(int rule_id) {
     return rule_routing_map[rule_id];
-} 
+}

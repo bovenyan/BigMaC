@@ -3,6 +3,7 @@
 using std::ifstream;
 using std::ofstream;
 using std::string;
+using std::unordered_set;
 
 pipe_line::pipe_line() {};
 
@@ -60,6 +61,9 @@ pipe_line::pipe_line(string & fwd_table_file,
             }
         }
     }
+
+    obtain_dep();
+    obtain_assoc();
 }
 
 void pipe_line::obtain_dep() {
@@ -67,7 +71,7 @@ void pipe_line::obtain_dep() {
     for(uint32_t idx = 0; idx < fwd_table.size(); ++idx) {
         vector <uint32_t> dep_rules;
         for (uint32_t idx1 = 0; idx1 < idx; ++idx1) {
-            if (fwd_table[idx].dep_rule(fwd_table[idx1])) {
+            if (fwd_table[idx].overlap(fwd_table[idx1])) {
                 dep_rules.push_back(idx1);
             }
         }
@@ -78,11 +82,25 @@ void pipe_line::obtain_dep() {
     for(uint32_t idx = 0; idx < mgmt_table.size(); ++idx) {
         vector <uint32_t> dep_rules;
         for (uint32_t idx1 = 0; idx1 < idx; ++idx1) {
-            if (mgmt_table[idx].dep_rule(mgmt_table[idx1])) {
+            if (mgmt_table[idx].overlap(mgmt_table[idx1])) {
                 dep_rules.push_back(idx1);
             }
         }
         mgmt_dep_map[idx] = dep_rules;
+    }
+}
+
+void pipe_line::obtain_assoc() {
+    for (int mgmt_idx = 0; mgmt_idx < mgmt_table.size(); ++mgmt_idx){
+        unordered_set<int> assoc;
+
+        for (int fwd_idx = 0; fwd_idx < fwd_table.size(); ++fwd_idx){
+            if (fwd_table[fwd_idx].overlap(mgmt_table[mgmt_idx])){
+               assoc.insert(fwd_idx); 
+            }
+        }
+
+        mgmt_fwd_assoc_map.push_back(assoc);
     }
 }
 

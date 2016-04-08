@@ -21,7 +21,7 @@ public:
     inline p_rule(const std::string &, bool = false);
     inline bool operator==(const p_rule &) const;
 
-    inline bool dep_rule(const p_rule &) const;
+    inline bool overlap(const p_rule &) const;
     inline bool packet_hit(const addr_5tup &) const;
     inline addr_5tup get_corner() const;
     inline addr_5tup get_random() const;
@@ -155,7 +155,7 @@ inline bool p_rule::operator==(const p_rule & rhs) const {
 
 /* member fuctions
  */
-inline bool p_rule::dep_rule(const p_rule & rl) const { // check whether a rule is directly dependent
+inline bool p_rule::overlap(const p_rule & rl) const { // check whether a rule is directly dependent
     if (!hostpair[0].match(rl.hostpair[0]))
         return false;
     if (!hostpair[1].match(rl.hostpair[1]))

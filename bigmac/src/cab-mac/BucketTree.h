@@ -47,8 +47,9 @@ public:
     /* search buckets in tree and linear respectively
      * search_bucket returns the bucket's pointer and the matched rule id
      */
-    std::pair<bucket *, pair<size_t, size_t> > search_bucket(const addr_5tup & packet,
-            bucket* buck_ptr) const;
+    std::pair<bucket *, pair<size_t, size_t> > search_bucket(
+        const addr_5tup & packet,
+        bucket * buck_ptr ) const;
 
     bucket * search_bucket_linear(const addr_5tup & packet, bucket* buck_ptr) const;
 
@@ -66,7 +67,8 @@ private:
      * cal_assoc_buckets calculates # of associated buckets for each rule
      * prune_tree_pre_alloc prunes the subtree of those small subtrees
      */
-    void cal_assoc_buckets(bucket * buck, std::vector<uint32_t> & fwd_assoc_buck_count,
+    void cal_assoc_buckets(bucket * buck,
+                           std::vector<uint32_t> & fwd_assoc_buck_count,
                            std::vector<uint32_t> & mgmt_assoc_buck_count) const;
     void prune_tree_pre_alloc(bucket * buck_ptr);
 
@@ -76,7 +78,8 @@ private:
      * check whether a traffic block hits a bucket and associated rules or not
      */
     void check_static_hit(const b_rule & traffic_block, bucket * buck_ptr,
-                          std::pair<std::set<size_t>, std::set<size_t> > & cached_rules,
+                          std::pair<std::set<size_t>,
+                          std::set<size_t> > & cached_rules,
                           size_t & buck_count);
 public:
     // dynamic related
