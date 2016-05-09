@@ -7,6 +7,8 @@
 #include "Address.hpp"
 #include "routing.h"
 #include "Rule.hpp"
+#include <set>
+
 
 class mac_manager {
 private:
@@ -30,6 +32,9 @@ private:
     pipe_line p_line;
     bucket_tree b_tree;
     routing network;   
+
+private:
+    std::set<int> cal_path_cover(int mgmt_rule_id);
 
 public:
     mac_manager(){};

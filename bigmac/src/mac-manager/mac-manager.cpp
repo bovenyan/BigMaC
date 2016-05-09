@@ -4,7 +4,7 @@
 using boost::split;
 using boost::is_any_of;
 using std::ifstream;
-
+using std::set;
 
 mac_manager::mac_manager(string config_file) {
     parse_config(config_file);
@@ -106,6 +106,66 @@ void mac_manager::parse_config(string config_file_name) {
 
 }
 
+set<int> mac_manager::cal_path_cover(int mgmt_rule_id) {
+    vector<unordered_set<int> > node_path_map;
+    node_path_map = vector<unordered_set<int> >(network.get_topo_size(),
+                    unordered_set<int>());
+
+    int path_to_cover = 0;
+
+    // init {node: <path>}
+    for (int path_id : p_line.mgmt_fwd_assoc_map[mgmt_rule_id]){ 
+        auto path_nodes = network.get_rule_path(path_id);
+        for (int node : path_nodes){
+            node_path_map[node].insert(path_id);
+        }
+        path_to_cover++;
+    }
+
+    set<int> path_cover;
+
+    while (path_to_cover != 0){
+        int min_idx = 0;
+        int min_path = path_to_cover;
+
+        // find node with most paths crossing
+        for (int idx = 0; idx < node_path_map.size(); ++idx){
+            if (path_cover.find(idx) != path_cover.end()){
+                continue;
+            }
+
+            if (node_path_map[idx].size() < min_path){
+                min_idx = idx;
+                min_path = node_path_map[idx].size();
+            }
+        } 
+
+        path_cover.insert(min_idx);
+        path_to_cover -= node_path_map.size();
+
+        unordered_set<int> & to_cover = node_path_map[min_idx];
+
+        // elim covered path;
+        for (int idx = 0; idx < node_path_map.size(); ++idx){
+            if (idx == min_idx)
+               continue;
+            else{
+                for (auto iter = node_path_map[idx].begin();
+                        iter != node_path_map[idx].end();
+                        ++iter){
+                    if (to_cover.find(*iter) != to_cover.end()){
+                        node_path_map[idx].erase(iter);
+                    }
+                }
+            } 
+        }
+
+        to_cover.clear();
+    }
+    
+    return path_cover;
+}
+
 void mac_manager::cache_on_request(addr_5tup packet, vector<int> & path,
                                    bucket * & buck, vector<int> & fwd_rule_ids,
                                    vector<int> & mgmt_rule_ids) {
@@ -117,8 +177,9 @@ void mac_manager::cache_on_request(addr_5tup packet, vector<int> & path,
 void mac_manager::place_prealloc(vector<pair<int, int> > & fwd_rule_plc,
                                  vector<pair<int, int> > & mgmt_rule_plc) {
     // calculate all the routes for all the fwding placement
-    vector<unordered_set<int> > (network.get_topo_size(),
-                                 unordered_set<int>());
+    vector<unordered_set<int> > fwding_routes =
+        vector<unordered_set<int> > (network.get_topo_size(),
+                                     unordered_set<int>());
 
 
     // calculate the "path cover problem" for all the mgmt placement
