@@ -1,4 +1,5 @@
 #include "MApair.h"
+#include <cfloat>
 
 Rule::Rule (string & line):MApair() {
     vector<unsigned> items;
@@ -83,4 +84,110 @@ pair<unsigned, unsigned> approxPortRangeToPrefix(pair<unsigned,
     mask = mask | ((~unsigned(0))<<16);
     prefix = prefix & mask;
     return make_pair(prefix, mask);
+}
+
+Bucket::Bucket(const Bucket & bkt):MApair(bkt){}
+
+Bucket::Bucket(const LongUINT & mat, const LongUINT & mas){
+    match = mat;
+    mask = mas;
+}
+
+void Bucket::fillAssoc(vector<int> & refAssoc, bool setBit, 
+            const LongUINT & checkBit, 
+            const vector<Rule> & rList){
+    for (int rID : refAssoc){
+        if (!(rList[rID].mask & checkBit))
+            assoc.push_back(rID);
+        else{
+            if ((rList[rID].match & checkBit) ^ setBit)
+                continue;
+            else
+                assoc.push_back(rID);
+        }
+    } 
+}
+
+void Bucket::split(vector<FIELD> fields, const vector<Rule> & rList){
+    vector<Bucket *> sons;
+
+    vector<Bucket *> scratch;
+    Bucket * bkt = new Bucket(*this);
+    scratch.push_back(bkt);
+
+    for (FIELD field : fields){
+        vector<Bucket *> newScratch;
+
+        for (Bucket * bkt : scratch){
+            LongUINT mask = bkt->mask;
+            
+            if (mask.divMask(field)){
+                LongUINT match1 = bkt->match;
+                Bucket * son1 = new Bucket(match1, mask);
+                son1->fillAssoc(bkt->assoc, false, mask ^ bkt->mask, rList);
+
+                LongUINT match2 = bkt->match ^ (mask ^ bkt->mask);
+                Bucket * son2 = new Bucket(match2, mask);
+                son2->fillAssoc(bkt->assoc, false, mask ^ bkt->mask, rList);
+                
+                newScratch.push_back(new Bucket(match1, mask));
+                newScratch.push_back(new Bucket(match2, mask));
+                delete bkt;
+            }
+            else{
+                if (*bkt != *this)
+                    sons.push_back(bkt);
+            }
+        }
+
+        scratch = newScratch;
+    }
+}
+
+double Bucket::getCutCost(){
+    double cost = 0;
+
+    for (Bucket * son : sons){
+        cost += son->assoc.size();    
+    }
+
+    if (sons.size() != 0){
+        cost /= sons.size();
+    }
+
+    return DBL_MAX;
+}
+
+void Bucket::getMinCostSplit(const vector<Rule> & rList, 
+        int cutNo, vector<FIELD> & cuts,
+        vector<FIELD> & resCut, double minCost = DBL_MAX){
+    if (cutNo == 0){
+        split(cuts, rList);
+        
+        double cost = getCutCost();
+
+        if (cost < minCost){
+            resCut = cuts;
+            minCost = cost;
+        }
+
+        for (Bucket * bkt : sons)
+            delete bkt;
+
+        sons.clear();
+
+        return;
+    }
+
+    for ( int i; i < FIELD_END; ++i){
+        cuts.push_back(FIELD(i)); 
+        getMinCostSplit(rList, cutNo-1, cuts, resCut, minCost);
+        cuts.pop_back();
+    } 
+}
+
+Bucket::~Bucket(){
+    for (Bucket * bkt : sons)
+        delete bkt;
+    sons.clear();
 }

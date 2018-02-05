@@ -2,6 +2,7 @@
 #define NETWORK_H
 
 #include "Table.h"
+#include "BSAbstract.h"
 #include <list>
 #include <vector>
 
@@ -9,26 +10,31 @@ using std::vector;
 using std::list;
 
 class Switch {
-public:
-    Ftable fwdBucketTable;
+private:
     Ftable fwdTable;
-    Ftable mgmtBucketTable;
     Ftable mgmtTable;
+
+public:
+    bool fwdPacket(Packet & pkt, BSA & bsa);  // return ctrlPort
 };
 
 class Network {
 public:
-    vector<list<pair<int, int>>> adj;
-    vector<Switch> devices;
-    vector<vector<int>> routes;
     int nodesNo;
 
+    vector<list<pair<int, int>>> adj;
+    vector<Switch> switches;
+    vector<vector<int>> routes;
+
+    void addEdge(int u, int v, int w);
 public:
     Network(int V);
 
-    void addEdge(int u, int v, int w);
     void calShortestPath(int src);
     int getNextHop(int cur, int dest);
+
+    void packetArrival(Packet & pkt, BSA & bsa);
+    void cacheEntries(const Packet & pkt, BSA & bsa);
 };
 
 #endif

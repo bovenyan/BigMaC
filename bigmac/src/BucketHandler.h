@@ -6,10 +6,23 @@
 class BucketHandler{
 private:
     Bucket * root;
-public:
-    void GenerateBucket();
+    int cutNo;
+    int thres;
 
-    ~BucketHandler();
+    void dfsBuckTreeGen(Bucket * bkt, vector<Rule> & rList);
+    pair<Bucket *, int> dfsPacketSearch(const LongUINT & header, Bucket * bkt);
+
+public:
+    BucketHandler(){root = NULL;}
+    BucketHandler(int t, int c) : cutNo(c), thres(t){root = NULL;}
+
+    void genBucketTree(vector<Rule> & rList);
+    pair<Bucket *, int> searchBucket(const Packet & pkt);
+
+    ~BucketHandler(){
+        if (root != NULL) 
+            delete root;
+    }
 };
 
 #endif

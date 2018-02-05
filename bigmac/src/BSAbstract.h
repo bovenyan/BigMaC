@@ -5,13 +5,10 @@
 #include "BucketHandler.h"
 
 class BSA {
-private:
-    Mtable switchingTable;
-    Mtable mgmtTable;
-    
-    BucketHandler bHandler;
-
 public:
+    Btable switchingTable;
+    Btable managementTable;
+
     void addMgmtRules();
     void addSwitchRules();
 };
