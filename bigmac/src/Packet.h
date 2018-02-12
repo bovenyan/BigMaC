@@ -5,6 +5,7 @@
 
 class Packet{
 public:
+    // feature
     LongUINT header;
     int ingressPort;
 

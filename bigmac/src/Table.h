@@ -30,7 +30,8 @@ private:
     BucketHandler bHandler;
 public:
     pair<Bucket *, int> getMatch(Packet & pkt);
-    int getAction(int rID){ return table[rID].action;}
+    Rule & getRule(int rID){ return table[rID]; }
+    int getAction(int rID){ return table[rID].action; }
 };
 
 class Ftable {
@@ -42,6 +43,30 @@ public:
 
 public:
     unordered_map<int, Entry> entryCacheMap;
+};
+
+class FtableTO: public Ftable{
+private:
+    unordered_map<Bucket *, double> bucketCacheMap;
+    unordered_map<int, Entry> entryCacheMap;
+    double timeout;
+
+public:
+    bool findBucket(Bucket * bkt){return bucketCacheMap.count(bkt);}
+    Entry & findEntry(int rID){assert(entryCacheMap.count(rID)); return entryCacheMap[rID];}
+
+    pair<int, int> getStats();
+};
+
+class FtableLRU: public Ftable{
+private:
+    unordered_map<Bucket *, list<Bucket *>::iterator> bucketCacheMap;
+    unordered_map<int, Entry> entryCacheMap;
+    int capacity;
+
+public:
+    bool findBucket(Bucket * bkt){return bucketCacheMap.count(bkt);}
+    Entry & findEntry(int rID){assert(entryCacheMap.count(rID)); return entryCacheMap[rID];}
 };
 
 #endif

@@ -32,6 +32,8 @@ class Rule:public MApair{
 public:
     Rule();
     Rule(string & line);
+
+    int getEgress(){return action;}
 };
 
 class Bucket:public MApair{

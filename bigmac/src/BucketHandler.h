@@ -17,6 +17,8 @@ public:
     BucketHandler(int t, int c) : cutNo(c), thres(t){root = NULL;}
 
     void genBucketTree(vector<Rule> & rList);
+
+    // ret: bucket, rule id
     pair<Bucket *, int> searchBucket(const Packet & pkt);
 
     ~BucketHandler(){

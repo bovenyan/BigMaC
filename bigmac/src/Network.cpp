@@ -9,48 +9,6 @@ using std::pair;
 
 typedef pair<int,int> iPair;
 
-bool Switch::fwdPacket(Packet & pkt, BSA & bsa) {
-    auto res = bsa.switchingTable.getMatch(pkt);
-    Bucket * fwdBkt = res.first;
-    int fwdRID = res.second;
-
-    assert(fwdBkt != NULL);
-
-    if (fwdTable.bucketCacheMap.count(fwdBkt) == 0) {
-        // cache miss
-        return true;
-    } else {
-        assert(fwdTable.entryCacheMap.count(fwdRID));
-
-        Entry & e = fwdTable.entryCacheMap[fwdRID];
-
-        if (e.nextHop == -1 && !e.egress) {
-            // negative rule
-            fwdTable.entryCacheMap.erase(fwdRID);
-            // cache miss, install rule
-            return true;
-        }
-
-        if (pkt.mgmtAction == -1) { // mgmt not applied before
-            auto mgmtRes = bsa.managementTable.getMatch(pkt);
-            Bucket * mgmtBkt = mgmtRes.first;
-            int mgmtRID = res.second;
-
-            if (mgmtBkt != NULL &&
-                    mgmtTable.entryCacheMap.count(mgmtRID)) {
-                pkt.mgmtAction = bsa.managementTable.getAction(mgmtRID);
-            }
-        }
-
-        if (e.egress)
-            pkt.egressPort = pkt.curSwitch; 
-        else
-            pkt.curSwitch = e.nextHop;
-
-        return false;
-    }
-}
-
 Network::Network(int nodeNo) {
     this->nodesNo = nodeNo;
     adj = vector<list<iPair>>(nodeNo, list<iPair>());
@@ -110,4 +68,17 @@ void Network::packetArrival(Packet & pkt, BSA & bsa) {
     }
 
     // TODO: do consistent check
+}
+
+void Network::cacheEntries(Packet & pkt, BSA & bsa){
+    auto swRes = bsa.getSwitchMatch(pkt); 
+    auto mgmtRes = bsa.getSwitchMatch(pkt);
+
+    // matched switching rule
+    int hop = pkt.ingressPort;
+    int dest = bsa.getSwitchRule(swRes.second).getEgress();
+
+    while (hop != dest){
+        hop = getNextHop(hop, dest);
+    } 
 }
