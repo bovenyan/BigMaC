@@ -1,5 +1,27 @@
 #include "Switch.h"
 
+Switch::Switch(TABLE_MGMT mgmt){
+    switch (mgmt){
+        case TIME_OUT:
+            fwdTable = new FtableTO();
+            mgmtTable = new FtableTO();
+            break;
+
+        case LRU:
+            fwdTable = new FtableLRU();
+            mgmtTable = new FtableLRU();
+            break;
+            
+        default:
+            break;
+    }
+}
+
+Switch::~Switch(){
+    delete fwdTable;
+    delete mgmtTable;
+}
+
 bool Switch::fwdPacket(Packet & pkt, BSA & bsa) {
     auto res = bsa.getSwitchMatch(pkt);
     Bucket * fwdBkt = res.first;
@@ -7,18 +29,16 @@ bool Switch::fwdPacket(Packet & pkt, BSA & bsa) {
 
     assert(fwdBkt != NULL);
 
-    if (fwdTable.bucketCacheMap.count(fwdBkt) == 0) {
+    if (!fwdTable->hasBucket(fwdBkt)) {
         // cache miss
         return true;
     } else {
-        assert(fwdTable.entryCacheMap.count(fwdRID));
-
-        Entry & e = fwdTable.entryCacheMap[fwdRID];
+        Entry & e = fwdTable->fetchEntry(fwdRID);
 
         if (e.nextHop == -1 && !e.egress) {
             // negative rule
-            fwdTable.entryCacheMap.erase(fwdRID);
-            // cache miss, install rule
+            fwdTable->eraseEntry(fwdRID);
+            // cache miss, install rules
             return true;
         }
 
@@ -27,8 +47,7 @@ bool Switch::fwdPacket(Packet & pkt, BSA & bsa) {
             Bucket * mgmtBkt = mgmtRes.first;
             int mgmtRID = res.second;
 
-            if (mgmtBkt != NULL &&
-                    mgmtTable.entryCacheMap.count(mgmtRID)) {
+            if (mgmtBkt != NULL && mgmtTable->hasEntry(mgmtRID)) {
                 pkt.mgmtAction = bsa.getMgmtRule(mgmtRID).action;
             }
         }

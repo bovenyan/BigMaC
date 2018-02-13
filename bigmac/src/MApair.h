@@ -46,6 +46,7 @@ private:
 public:
     vector<Bucket *> sons;
 
+    vector<int> & getAssoc() {return assoc;}
     Bucket(const Bucket & bkt);
     Bucket(const LongUINT & mat, const LongUINT & mas);
     ~Bucket();  // delete bkt and its sons.
